@@ -902,29 +902,60 @@ function loadContacts() {
                 const refPath = isGrp ? "groups/" + item.id : "users/" + item.id;
                 const chatId = isGrp ? item.id : [currentUser, item.id].sort().join("_");
                 
-                // 3. MENGAMBIL DATA USER (DEFINISI 'u' DISINI)
+                // 3. MENGAMBIL DATA USER
                 db.ref(refPath).once("value", (uSnap) => {
-                    
-                    // --- PENTING: DIDEFINISIKAN DI SINI ---
                     const u = uSnap.val();
                     
                     // Cek elemen sudah ada
                     const existingEl = document.getElementById(`contact-${item.id}`);
                     if(existingEl) return;
 
-                    // 4. LOGIKA UNREAD (MEMBUTUHKAN VARIABLE 'u')
-                    // Cek pesan yang belum dilihat (seen=false)
+                    // --- UPDATE: TAMBAHKAN LISTENER NOTIFIKASI (SUARA & POUP) ---
+                    // Kita memantau pesan terakhir yang masuk
+                    db.ref("chats/" + chatId).limitToLast(1).on("child_added", (msgSnap) => {
+                        const m = msgSnap.val();
+                        
+                        // LOGIKA NOTIFIKASI:
+                        // 1. Pesan bukan dari saya sendiri
+                        // 2. Chat yang sedang dibuka BUKAN chat ini (maksudnya lagi di layar belakang/daftar chat)
+                        // 3. Pesan belum dihapus
+                        if (m.from !== currentUser && currentChatId !== chatId && !m.deleted) {
+                            
+                            // 1. Putar Suara
+                            playNotificationSound('message');
+
+                            // 2. Siapkan Teks Notifikasi (Dekripsi dulu)
+                            let notifBody = "";
+                            if (m.text.startsWith("IMG:")) {
+                                notifBody = "📷 Mengirim Gambar";
+                            } else if (m.text.startsWith("TYPE:VN:")) {
+                                notifBody = "🎤 Mengirim Voice Note";
+                            } else if (m.text.startsWith("CALL_JITSI:")) {
+                                notifBody = "📞 Panggilan Video/Suara...";
+                            } else {
+                                try {
+                                    notifBody = decryptData(m.text);
+                                } catch(e) {
+                                    notifBody = "Pesan terenkripsi";
+                                }
+                            }
+
+                            // 3. Tampilkan Notifikasi Sistem
+                            const senderName = isGrp ? (u?.name || "Grup") : (u?.username || "Teman");
+                            showSystemNotification(senderName, notifBody, item.id);
+                        }
+                    });
+
+                    // 4. LOGIKA UNREAD BADGE (SEPERTI SEBELUMNYA)
                     db.ref("chats/" + chatId).orderByChild("seen").equalTo(false).on("value", unreadSnap => {
                         let count = 0;
                         unreadSnap.forEach(m => { 
-                            // Hitung pesan dari ORANG LAIN (m.val().from !== currentUser)
                             if(m.val().from !== currentUser) count++; 
                         });
 
                         const currentEl = document.getElementById(`contact-${item.id}`);
                         if(!currentEl) return;
 
-                        // Update Badge
                         let badgeEl = currentEl.querySelector('.unread-badge');
                         if(count > 0) {
                             if(!badgeEl) {
@@ -945,8 +976,6 @@ function loadContacts() {
                     
                     const pinIcon = item.isPinned ? '<i class="fa fa-thumbtack" style="color:var(--accent); font-size:12px; margin-left:5px;"></i>' : '';
 
-                    // 6. DIV INNERHTML (MEMBUAT 'u' JADI DEFINED)
-                    // Pastikan variable `u` sudah di-define di atas (Step 3)
                     div.innerHTML = `
                         <img src="${u?.photo || (isGrp ? 'https://cdn-icons-png.flaticon.com/512/615/615075.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}" 
                              onclick="event.stopPropagation(); goToTargetProfile('${item.id}', ${isGrp})"
@@ -1655,38 +1684,58 @@ function playNotificationSound(type = 'message') {
     const sound = document.getElementById(soundId);
     
     if (sound) {
+        // Reset durasi ke 0 agar bisa diputar ulang dengan cepat
         sound.currentTime = 0;
+        
         const playPromise = sound.play();
         
         if (playPromise !== undefined) {
             playPromise.then(() => {
                 console.log(`Suara ${type} diputar`);
             }).catch(e => {
-                console.log("Autoplay diblokir. Klik layar sekali agar suara aktif.");
+                console.log("Autoplay diblokir browser. Klik layar sekali agar suara aktif.");
             });
         }
     }
 }
 function showSystemNotification(sender, message, partnerId) {
+    // Tampilkan Toast kecil di dalam aplikasi
     showToast(`Pesan baru dari ${sender}`);
 
+    // Tampilkan Notifikasi Browser (di luar aplikasi)
     if (Notification.permission === "granted") {
+        
+        // Batasi panjang pesan agar notifikasi tidak kepanjangan
+        let shortMsg = message;
+        if (shortMsg.length > 50) {
+            shortMsg = shortMsg.substring(0, 50) + "...";
+        }
+
         const options = {
-            body: message,
-            icon: 'image/genre/20.png',
-            badge: 'image/genre/20.png',
-            vibrate: [200, 100, 200]
+            body: shortMsg,
+            icon: 'https://cdn-icons-png.flaticon.com/512/149/149071.png', // Pastikan link ini valid
+            badge: 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
+            vibrate: [200, 100, 200],
+            // Tambahkan tag agar notifikasi lama diganti baru jika pesan datang bertubi
+            tag: partnerId 
         };
 
         const notification = new Notification(sender, options);
         
         notification.onclick = function() {
+            // Saat notifikasi diklik, fokuskan jendela dan buka chat tersebut
             window.focus();
+            
+            // Opsional: Buka chat otomatis (membutuhkan data tambahan)
+            // openChat(partnerId, ...); 
+            
             this.close();
         };
+    } else if (Notification.permission !== "denied") {
+        // Jika belum pernah minta izin, minta izin lagi
+        Notification.requestPermission();
     }
 }
-
 function pinChat(targetId) {
     const pinRef = db.ref(`user_settings/${currentUser}/pinned_chats/${targetId}`);
     
@@ -2111,4 +2160,5 @@ function handleMove(e) {
 
 </script>
 </body>
+
 </html>
