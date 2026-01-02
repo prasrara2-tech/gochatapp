@@ -860,23 +860,18 @@ function updatePartnerOnlineStatus() {
 }
 function unlockAudioContext() {
     if (audioContextUnlocked) return;
-    
     const audio = document.getElementById('notificationSound');
-    
     if (audio) {
-        // Coba mainkan sebentar lalu pause
         audio.play().then(() => {
             audio.pause();
             audio.currentTime = 0;
             audioContextUnlocked = true;
-            console.log(">>> SUARA DIAKTIFKAN");
-        }).catch(e => {
-            console.log("Audio belum bisa dimainkan (tunggu user klik):", e);
-        });
+            console.log(">>> AUDIO SUDAH DIAKTIFKAN");
+        }).catch(e => {});
     }
 }
 
-// Pasang listener saat user klik atau sentuh layar pertama kali
+// Aktifkan saat user klik/touch layar
 document.addEventListener('click', unlockAudioContext, { once: true });
 document.addEventListener('touchstart', unlockAudioContext, { once: true });
 /* =========================================
@@ -1789,35 +1784,11 @@ function logToScreen(txt) {
         }
     }
 }
-function playNotificationSound(type = 'message') {
-    const soundId = (type === 'ringtone') ? "ringtoneSound" : "notificationSound";
-    const sound = document.getElementById(soundId);
-    
-    if (sound) {
-        sound.currentTime = 0;
-        
-        // Penting: Set loop true jika ringtone, false jika pesan
-        if (type === 'ringtone') {
-            sound.loop = true; 
-        } else {
-            sound.loop = false;
-        }
-        
-        const playPromise = sound.play();
-        
-        if (playPromise !== undefined) {
-            playPromise.then(() => {
-                console.log(`🔊 Suara ${type} diputar.`);
-            }).catch(error => {
-                console.warn("🚫 Audio diblokir browser.");
-            });
-        }
-    }
-}
+// --- FUNGSI TAMPILKAN POP-UP BROWSER ---
 function showSystemNotification(sender, message, partnerId) {
-    // Cek izin dulu
+    console.log(`[DEBUG] Cek Izin: ${Notification.permission}`);
+
     if (Notification.permission === "granted") {
-        
         let shortMsg = message;
         if (shortMsg.length > 50) shortMsg = shortMsg.substring(0, 50) + "...";
 
@@ -1826,20 +1797,27 @@ function showSystemNotification(sender, message, partnerId) {
             icon: 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
             badge: 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
             vibrate: [200, 100, 200],
-            tag: partnerId // Penting: Agar notifikasi yang sama dari orang yang sama tidak menumpuk
+            tag: partnerId
         };
 
-        const notification = new Notification(sender, options);
-        
-        notification.onclick = function() {
-            window.focus();
-            openChat(partnerId, '', sender, partnerId.startsWith("GROUP_")); // Buka chat saat notif diklik
-            this.close();
-        };
+        try {
+            const notification = new Notification(sender, options);
+            notification.onclick = function() {
+                window.focus();
+                openChat(partnerId, '', sender, partnerId.startsWith("GROUP_"));
+                this.close();
+            };
+        } catch (e) {
+            console.error("[ERROR] Notif Browser Error:", e);
+        }
+
     } else if (Notification.permission !== "denied") {
         Notification.requestPermission();
+    } else {
+        console.error("[DEBUG] Izin Notif DITOLAK (Blocked).");
     }
 }
+
 function pinChat(targetId) {
     const pinRef = db.ref(`user_settings/${currentUser}/pinned_chats/${targetId}`);
     
@@ -2266,6 +2244,7 @@ function handleMove(e) {
 </body>
 
 </html>
+
 
 
 
