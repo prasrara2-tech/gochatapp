@@ -658,6 +658,8 @@ let isWindowFocused = document.hasFocus();
 let isNotificationSetupDone = false;
 let contactsListener = null; // <--- TAMBAHKAN INI! AGAR ERROR HILANG
 let unreadListeners = {}; 
+let audioContextUnlocked = false;
+    
 // Cek Fokus
 window.addEventListener('focus', () => {
     isWindowFocused = true;
@@ -856,7 +858,27 @@ function updatePartnerOnlineStatus() {
         st.style.color = u?.online ? "var(--online)" : "var(--text-muted)";
     });
 }
+function unlockAudioContext() {
+    if (audioContextUnlocked) return;
+    
+    const audio = document.getElementById('notificationSound');
+    
+    if (audio) {
+        // Coba mainkan sebentar lalu pause
+        audio.play().then(() => {
+            audio.pause();
+            audio.currentTime = 0;
+            audioContextUnlocked = true;
+            console.log(">>> SUARA DIAKTIFKAN");
+        }).catch(e => {
+            console.log("Audio belum bisa dimainkan (tunggu user klik):", e);
+        });
+    }
+}
 
+// Pasang listener saat user klik atau sentuh layar pertama kali
+document.addEventListener('click', unlockAudioContext, { once: true });
+document.addEventListener('touchstart', unlockAudioContext, { once: true });
 /* =========================================
     CONTACTS & LIST
     ========================================= */
@@ -865,9 +887,6 @@ function loadContacts() {
     if (contactsListener) {
         db.ref(`user_chats/${currentUser}`).off('value', contactsListener);
     }
-
-    // KITA TIDAK AKAN MEMANGGIL clearAllChatListeners() DISINI
-    // Karena kita ingin mempertahankan koneksi yang sudah ada agar tidak lag.
 
     contactsListener = db.ref(`user_chats/${currentUser}`).on("value", async (snap) => {
         
@@ -902,8 +921,6 @@ function loadContacts() {
 
                 if (el) {
                     // --- SCENARIO A: UPDATE (Chat sudah ada di layar) ---
-                    // JANGAN HAPUS ELEMENT! JANGAN BUAT LISTENER BARU!
-                    // Cukup update teks nama dan pesan terakhir.
                     
                     // Update Class jika status pinned berubah
                     if (isPinned && !el.classList.contains('pinned')) el.classList.add('pinned');
@@ -918,7 +935,6 @@ function loadContacts() {
 
                 } else {
                     // --- SCENARIO B: CREATE (Chat baru belum ada di layar) ---
-                    // Buat elemen HTML baru
                     
                     let div = document.createElement("div");
                     div.id = `contact-${id}`; 
@@ -942,7 +958,6 @@ function loadContacts() {
 
                     // 1. Listener Badge (Unread Count)
                     if (!chatListeners[id].badge) {
-                        // LimitToLast(30) agar tidak berat baca history
                         const unreadRef = db.ref("chats/" + chatId).limitToLast(30).orderByChild("seen").equalTo(false);
                         
                         const badgeHandler = (unreadSnap) => {
@@ -968,35 +983,41 @@ function loadContacts() {
                         };
                         
                         unreadRef.on("value", badgeHandler);
-                        chatListeners[id].badge = unreadRef; // Simpan referensi listener
+                        chatListeners[id].badge = unreadRef; 
                     }
 
-                    // 2. Listener Notifikasi (Sound & Popup)
+                    // --- 2. LISTENER NOTIFIKASI (FIXED: SUARA & POP-UP) ---
                     if (!chatListeners[id].notif) {
                         const notifRef = db.ref("chats/" + chatId).limitToLast(1);
                         
                         const notifHandler = (msgSnap) => {
                             msgSnap.forEach(s => {
                                 const m = s.val();
-                                // Hanya notif jika: Bukan dari saya, Chat tidak sedang dibuka, Pesan tidak dihapus
+                                
+                                // LOGIKA BARU:
+                                // 1. Bukan pesan saya sendiri
+                                // 2. Chat ini SEDANG TIDAK DIBUKA
+                                // 3. Pesan tidak dihapus
                                 if (m.from !== currentUser && currentChatId !== chatId && !m.deleted) {
                                     
-                                    if (!document.hidden && isWindowFocused) {
-                                        // App sedang aktif di layar -> Cukup bunyi kecil (opsional)
-                                        playNotificationSound('message');
-                                    } else {
-                                        // App Background / Tab Lain -> Bunyi + Notifikasi Browser
-                                        playNotificationSound('message');
-                                        
+                                    // 1. MAINKAN SUARA (Selalu mainkan jika chat tidak dibuka)
+                                    playNotificationSound('message');
+
+                                    // 2. TAMPILKAN POP-UP (Kecuali user sedang mengetik)
+                                    const isUserTyping = (document.activeElement.id === 'text');
+                                    
+                                    if (!isUserTyping) {
                                         let notifBody = "";
-                                        if (m.text.startsWith("IMG:")) notifBody = "Mengirim Gambar...";
-                                        else if (m.text.startsWith("TYPE:VN:")) notifBody = "Mengirim Voice Note...";
-                                        else if (m.text.startsWith("CALL_JITSI:")) notifBody = "Panggilan Masuk...";
+                                        if (m.text.startsWith("IMG:")) notifBody = "📷 Mengirim Gambar...";
+                                        else if (m.text.startsWith("TYPE:VN:")) notifBody = "🎤 Mengirim Voice Note...";
+                                        else if (m.text.startsWith("CALL_JITSI:")) notifBody = "📞 Panggilan Masuk...";
                                         else {
-                                            try { notifBody = decryptData(m.text); } catch(e) { notifBody = "Pesan"; }
+                                            try { notifBody = decryptData(m.text); } catch(e) { notifBody = "Pesan baru"; }
                                         }
-                                        
+
                                         const senderName = isGrp ? (u?.name || "Grup") : (u?.username || "Teman");
+                                        
+                                        // Panggil fungsi pop-up browser + toast internal
                                         showSystemNotification(senderName, notifBody, id);
                                     }
                                 }
@@ -1011,25 +1032,20 @@ function loadContacts() {
         });
 
         // --- SCENARIO C: REMOVE (Chat dihapus dari database) ---
-        // Cari elemen yang ada di HTML tapi tidak ada di snapshot
         const existingDivs = document.querySelectorAll('.user');
         existingDivs.forEach(div => {
             const divId = div.id.replace('contact-', '');
-            // Jika ID chat tidak ada di list terbaru
             if (!currentSnapshotIds.includes(divId)) {
-                // Matikan listener dulu
                 if (chatListeners[divId]) {
                     if (chatListeners[divId].badge) chatListeners[divId].badge.off();
                     if (chatListeners[divId].notif) chatListeners[divId].notif.off();
                     delete chatListeners[divId];
                 }
-                // Hapus HTML
                 div.remove();
             }
         });
 
-        // --- SORTING (Urutkan Chat) ---
-        // Kita susun ulang urutan appendChild berdasarkan waktu terbaru / pinned
+        // --- SORTING ---
         let items = [];
         snap.forEach(c => { 
             items.push({ id: c.key, info: c.val(), isPinned: !!pinnedIds[c.key] });
@@ -1043,7 +1059,7 @@ function loadContacts() {
         items.forEach(item => {
             const el = document.getElementById(`contact-${item.id}`);
             if(el) {
-                list.appendChild(el); // appendChild memindahkan elemen ke bawah (ke posisi terakhir)
+                list.appendChild(el);
             }
         });
     });
@@ -1758,18 +1774,18 @@ function playNotificationSound(type = 'message') {
     const sound = document.getElementById(soundId);
     
     if (sound) {
-        // Reset durasi ke 0 agar bisa diputar ulang dengan cepat
         sound.currentTime = 0;
-        
         const playPromise = sound.play();
         
         if (playPromise !== undefined) {
             playPromise.then(() => {
-                console.log(`Suara ${type} diputar`);
-            }).catch(e => {
-                console.log("Autoplay diblokir browser. Klik layar sekali agar suara aktif.");
+                console.log(`🔊 Suara ${type} diputar.`);
+            }).catch(error => {
+                console.warn("🚫 Audio diblokir browser. Klik layar sekali lagi.");
             });
         }
+    } else {
+        console.error(`❌ File audio '${soundId}' tidak ditemukan di HTML!`);
     }
 }
 function showSystemNotification(sender, message, partnerId) {
@@ -2224,5 +2240,6 @@ function handleMove(e) {
 </body>
 
 </html>
+
 
 
