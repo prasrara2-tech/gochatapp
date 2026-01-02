@@ -986,7 +986,7 @@ function loadContacts() {
                         chatListeners[id].badge = unreadRef; 
                     }
 
-                    // --- 2. LISTENER NOTIFIKASI (FIXED: SUARA & POP-UP) ---
+                                      // 2. Listener Notifikasi (Sound & Popup)
                     if (!chatListeners[id].notif) {
                         const notifRef = db.ref("chats/" + chatId).limitToLast(1);
                         
@@ -994,30 +994,40 @@ function loadContacts() {
                             msgSnap.forEach(s => {
                                 const m = s.val();
                                 
-                                // LOGIKA BARU:
-                                // 1. Bukan pesan saya sendiri
-                                // 2. Chat ini SEDANG TIDAK DIBUKA
-                                // 3. Pesan tidak dihapus
+                                // DEBUG
+                                console.log(`[DEBUG] Pesan Masuk: From=${m.from} | MyID=${currentUser} | CurrentChat=${currentChatId}`);
+
                                 if (m.from !== currentUser && currentChatId !== chatId && !m.deleted) {
                                     
-                                    // 1. MAINKAN SUARA (Selalu mainkan jika chat tidak dibuka)
-                                    playNotificationSound('message');
+                                    // --- LOGIKA BARU: CEK TIPE PESAN DULU SEBELUM MAINKAN SUARA ---
+                                    
+                                    let notifBody = "";
+                                    let soundType = 'message'; // Default: Suara Pesan biasa
 
-                                    // 2. TAMPILKAN POP-UP (Kecuali user sedang mengetik)
+                                    if (m.text.startsWith("CALL_JITSI:")) {
+                                        // JIKA PANGGILAN: Gunakan Ringtone
+                                        soundType = 'ringtone'; 
+                                        notifBody = "📞 Panggilan Masuk...";
+                                    } 
+                                    else if (m.text.startsWith("IMG:")) {
+                                        notifBody = "📷 Mengirim Gambar...";
+                                    } 
+                                    else if (m.text.startsWith("TYPE:VN:")) {
+                                        notifBody = "🎤 Mengirim Voice Note...";
+                                    } 
+                                    else {
+                                        try { notifBody = decryptData(m.text); } catch(e) { notifBody = "Pesan baru"; }
+                                    }
+
+                                    // --- MAINKAN SUARA BERDASARKAN TIPE ---
+                                    // Jika soundType = 'ringtone', dia akan memainkan file night-owl.mp3
+                                    playNotificationSound(soundType);
+
+                                    // --- TAMPILKAN POP-UP ---
                                     const isUserTyping = (document.activeElement.id === 'text');
                                     
                                     if (!isUserTyping) {
-                                        let notifBody = "";
-                                        if (m.text.startsWith("IMG:")) notifBody = "📷 Mengirim Gambar...";
-                                        else if (m.text.startsWith("TYPE:VN:")) notifBody = "🎤 Mengirim Voice Note...";
-                                        else if (m.text.startsWith("CALL_JITSI:")) notifBody = "📞 Panggilan Masuk...";
-                                        else {
-                                            try { notifBody = decryptData(m.text); } catch(e) { notifBody = "Pesan baru"; }
-                                        }
-
                                         const senderName = isGrp ? (u?.name || "Grup") : (u?.username || "Teman");
-                                        
-                                        // Panggil fungsi pop-up browser + toast internal
                                         showSystemNotification(senderName, notifBody, id);
                                     }
                                 }
@@ -1068,6 +1078,16 @@ function loadContacts() {
     MESSAGING CORE
     ========================================= */
 function openChat(pId, photo, name, grp = false) {
+    if (activeChatRef) {
+        activeChatRef.off();
+        console.log("Koneksi chat lama diputus.");
+    }
+     const ringtone = document.getElementById('ringtoneSound');
+    if(ringtone) {
+        ringtone.pause();
+        ringtone.currentTime = 0;
+    }
+
     if (activeChatRef) {
         activeChatRef.off();
         console.log("Koneksi chat lama diputus.");
@@ -1775,17 +1795,23 @@ function playNotificationSound(type = 'message') {
     
     if (sound) {
         sound.currentTime = 0;
+        
+        // Penting: Set loop true jika ringtone, false jika pesan
+        if (type === 'ringtone') {
+            sound.loop = true; 
+        } else {
+            sound.loop = false;
+        }
+        
         const playPromise = sound.play();
         
         if (playPromise !== undefined) {
             playPromise.then(() => {
                 console.log(`🔊 Suara ${type} diputar.`);
             }).catch(error => {
-                console.warn("🚫 Audio diblokir browser. Klik layar sekali lagi.");
+                console.warn("🚫 Audio diblokir browser.");
             });
         }
-    } else {
-        console.error(`❌ File audio '${soundId}' tidak ditemukan di HTML!`);
     }
 }
 function showSystemNotification(sender, message, partnerId) {
@@ -2240,6 +2266,7 @@ function handleMove(e) {
 </body>
 
 </html>
+
 
 
 
