@@ -887,7 +887,7 @@ function loadContacts() {
         
         // Ambil data Pinned sekali saja untuk referensi
         const pinnedSnap = await db.ref(`user_settings/${currentUser}/pinned_chats`).once("value");
-        const pinnedIds = pinnedSnap.val() || {};
+        const isPinned = !!pinnedIds[id];
         const list = document.getElementById("users");
         
         // Array untuk menyimpan ID chat yang ada di snapshot saat ini
@@ -1818,6 +1818,38 @@ function showSystemNotification(sender, message, partnerId) {
     }
 }
 
+// --- FUNGSI MAINKAN SUARA (PENTING: JIKA HILANG, SUARA MATI & NOTIF ERROR) ---
+function playNotificationSound(type = 'message') {
+    const soundId = (type === 'ringtone') ? "ringtoneSound" : "notificationSound";
+    const sound = document.getElementById(soundId);
+    
+    if (sound) {
+        sound.currentTime = 0;
+        
+        // LOGIKA LOOP:
+        // Jika tipe 'ringtone' (Panggilan): Suara berulang terus menerus (Loop).
+        // Jika tipe 'message' (Pesan biasa): Suara hanya sekali (No Loop).
+        if (type === 'ringtone') {
+            sound.loop = true; 
+        } else {
+            sound.loop = false;
+        }
+        
+        const playPromise = sound.play();
+        
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+                console.log(`🔊 [BERHASIL] Suara ${type} diputar.`);
+            }).catch(error => {
+                console.warn("🚫 [ERROR] Audio gagal dimainkan:", error);
+                console.warn("💡 Info: Klik sekali di layar agar browser mengizinkan suara.");
+            });
+        }
+    } else {
+        console.error(`❌ [ERROR] Elemen audio '${soundId}' tidak ditemukan di HTML!`);
+    }
+}
+
 function pinChat(targetId) {
     const pinRef = db.ref(`user_settings/${currentUser}/pinned_chats/${targetId}`);
     
@@ -2244,6 +2276,7 @@ function handleMove(e) {
 </body>
 
 </html>
+
 
 
 
