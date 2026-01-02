@@ -702,6 +702,21 @@ function initApp() {
     setupEmoji();
     setupTypingListener();
 }
+
+// Fungsi untuk mematikan semua listener chat lama (Anti-Zombie)
+function clearAllChatListeners() {
+    for (const chatId in chatListeners) {
+        const listeners = chatListeners[chatId];
+        if (listeners.unread) listeners.unread.off();
+        if (listeners.notif) listeners.notif.off();
+        if (listeners.lastMsg) listeners.lastMsg.off(); // Opsional: jika ada listener pesan terakhir
+    }
+    // Kosongkan gudang
+    for (const key in chatListeners) {
+        delete chatListeners[key];
+    }
+    console.log(">>> SEMUA LISTENER CHAT LAMA SUDAH DIMATIKAN");
+}
 /* =========================================
     FUNGSI GROUP (SUDAH DIPERBAIKI - TIDAK GANDA)
     ========================================= */
@@ -860,21 +875,22 @@ function updatePartnerOnlineStatus() {
     CONTACTS & LIST
     ========================================= */
 function loadContacts() {
-    // 1. MATIKAN LISTENER PARENT LAMA
+    // 1. BERSIHKAN LISTENER LAMA (PENTING!)
+    // Kita memanggil fungsi clean up di sini sebelum memuat ulang list
     if (contactsListener) {
         db.ref(`user_chats/${currentUser}`).off('value', contactsListener);
     }
+    // Matikan juga listener detail chat yang mungkin masih nempel
+    clearAllChatListeners();
 
-    // 2. BUAT LISTENER PARENT
+    // 2. BUAT LISTENER PARENT (DAFTAR CHAT)
     contactsListener = db.ref(`user_chats/${currentUser}`).on("value", (snap) => {
         
-        // Ambil data pinned
         db.ref(`user_settings/${currentUser}/pinned_chats`).once("value", pinnedSnap => {
             const pinnedIds = pinnedSnap.val() || {};
             const list = document.getElementById("users");
             
-            // Bersihkan list
-            list.innerHTML = ""; 
+            list.innerHTML = ""; // Bersihkan tampilan HTML
             
             let items = [];
             
@@ -889,65 +905,32 @@ function loadContacts() {
                 }); 
             });
 
-            // Urutkan (Pinned dulu)
             items.sort((a, b) => {
                 if (a.isPinned && !b.isPinned) return -1;
                 if (!a.isPinned && b.isPinned) return 1;
                 return b.info.time - a.info.time;
             });
 
-            // Render ke HTML
             items.forEach(item => {
                 const isGrp = item.id.startsWith("GROUP_");
                 const refPath = isGrp ? "groups/" + item.id : "users/" + item.id;
                 const chatId = isGrp ? item.id : [currentUser, item.id].sort().join("_");
                 
-                // 3. MENGAMBIL DATA USER
                 db.ref(refPath).once("value", (uSnap) => {
                     const u = uSnap.val();
-                    
-                    // Cek elemen sudah ada
                     const existingEl = document.getElementById(`contact-${item.id}`);
                     if(existingEl) return;
 
-                    // --- UPDATE: TAMBAHKAN LISTENER NOTIFIKASI (SUARA & POUP) ---
-                    // Kita memantau pesan terakhir yang masuk
-                    db.ref("chats/" + chatId).limitToLast(1).on("child_added", (msgSnap) => {
-                        const m = msgSnap.val();
-                        
-                        // LOGIKA NOTIFIKASI:
-                        // 1. Pesan bukan dari saya sendiri
-                        // 2. Chat yang sedang dibuka BUKAN chat ini (maksudnya lagi di layar belakang/daftar chat)
-                        // 3. Pesan belum dihapus
-                        if (m.from !== currentUser && currentChatId !== chatId && !m.deleted) {
-                            
-                            // 1. Putar Suara
-                            playNotificationSound('message');
+                    // --- 3. ATTACH LISTENER BARU (DIBERSIHKAN SETIAP RELOAD) ---
+                    
+                    // A. LISTENER UNREAD (BADGE)
+                    // KITA TAMBAHKAN limitToLast(20) AGAR TIDAK LEMOT MEMBACA SEJARAH PANJANG
+                    const unreadRef = db.ref("chats/" + chatId)
+                        .limitToLast(20) 
+                        .orderByChild("seen")
+                        .equalTo(false);
 
-                            // 2. Siapkan Teks Notifikasi (Dekripsi dulu)
-                            let notifBody = "";
-                            if (m.text.startsWith("IMG:")) {
-                                notifBody = "📷 Mengirim Gambar";
-                            } else if (m.text.startsWith("TYPE:VN:")) {
-                                notifBody = "🎤 Mengirim Voice Note";
-                            } else if (m.text.startsWith("CALL_JITSI:")) {
-                                notifBody = "📞 Panggilan Video/Suara...";
-                            } else {
-                                try {
-                                    notifBody = decryptData(m.text);
-                                } catch(e) {
-                                    notifBody = "Pesan terenkripsi";
-                                }
-                            }
-
-                            // 3. Tampilkan Notifikasi Sistem
-                            const senderName = isGrp ? (u?.name || "Grup") : (u?.username || "Teman");
-                            showSystemNotification(senderName, notifBody, item.id);
-                        }
-                    });
-
-                    // 4. LOGIKA UNREAD BADGE (SEPERTI SEBELUMNYA)
-                    db.ref("chats/" + chatId).orderByChild("seen").equalTo(false).on("value", unreadSnap => {
+                    const unreadHandler = (unreadSnap) => {
                         let count = 0;
                         unreadSnap.forEach(m => { 
                             if(m.val().from !== currentUser) count++; 
@@ -967,13 +950,61 @@ function loadContacts() {
                         } else {
                             if(badgeEl) badgeEl.remove();
                         }
-                    });
+                    };
+                    
+                    // Simpan listener ke gudang & aktifkan
+                    unreadRef.on("value", unreadHandler);
+                    if(!chatListeners[item.id]) chatListeners[item.id] = {};
+                    chatListeners[item.id].unread = unreadRef;
 
-                    // 5. BUAT ELEMEN DIV
+
+                    // B. LISTENER NOTIFIKASI (SUARA & POPUP)
+                    const notifRef = db.ref("chats/" + chatId).limitToLast(1);
+                    
+                    const notifHandler = (msgSnap) => {
+                        // Loop untuk ambil data pesan terakhir
+                        msgSnap.forEach(s => {
+                            const m = s.val();
+                            
+                            // LOGIKA: Hanya notif jika:
+                            // 1. Bukan dari saya
+                            // 2. Chat ini sedang TIDAK dibuka
+                            // 3. Pesan belum dihapus
+                            // 4. (Opsional) Aplikasi sedang di background atau minim (document.hidden)
+                            
+                            if (m.from !== currentUser && currentChatId !== chatId && !m.deleted) {
+                                
+                                // Cek apakah aplikasi sedang terlihat oleh user
+                                if (!document.hidden && isWindowFocused) {
+                                    // Jika aplikasi sedang dibuka dan aktif, JANGAN tampilkan notifikasi browser yang mengganggu
+                                    // Cukup update badge (sudah dihandle oleh listener A)
+                                    console.log("Chat aktif, skip notifikasi browser");
+                                } else {
+                                    // Jika app di background / minimize / tab lain -> Tampilkan Notifikasi
+                                    playNotificationSound('message');
+
+                                    let notifBody = "";
+                                    if (m.text.startsWith("IMG:")) notifBody = "📷 Mengirim Gambar";
+                                    else if (m.text.startsWith("TYPE:VN:")) notifBody = "🎤 Mengirim Voice Note";
+                                    else if (m.text.startsWith("CALL_JITSI:")) notifBody = "📞 Panggilan Masuk...";
+                                    else {
+                                        try { notifBody = decryptData(m.text); } catch(e) { notifBody = "Pesan"; }
+                                    }
+
+                                    const senderName = isGrp ? (u?.name || "Grup") : (u?.username || "Teman");
+                                    showSystemNotification(senderName, notifBody, item.id);
+                                }
+                            }
+                        });
+                    };
+
+                    notifRef.on("child_added", notifHandler);
+                    chatListeners[item.id].notif = notifRef;
+
+                    // 4. RENDER ELEMEN HTML (Seperti biasa)
                     let div = document.createElement("div");
                     div.id = `contact-${item.id}`; 
                     div.className = `user ${item.isPinned ? 'pinned' : ''}`;
-                    
                     const pinIcon = item.isPinned ? '<i class="fa fa-thumbtack" style="color:var(--accent); font-size:12px; margin-left:5px;"></i>' : '';
 
                     div.innerHTML = `
@@ -1699,40 +1730,28 @@ function playNotificationSound(type = 'message') {
     }
 }
 function showSystemNotification(sender, message, partnerId) {
-    // Tampilkan Toast kecil di dalam aplikasi
-    showToast(`Pesan baru dari ${sender}`);
-
-    // Tampilkan Notifikasi Browser (di luar aplikasi)
+    // Cek izin dulu
     if (Notification.permission === "granted") {
         
-        // Batasi panjang pesan agar notifikasi tidak kepanjangan
         let shortMsg = message;
-        if (shortMsg.length > 50) {
-            shortMsg = shortMsg.substring(0, 50) + "...";
-        }
+        if (shortMsg.length > 50) shortMsg = shortMsg.substring(0, 50) + "...";
 
         const options = {
             body: shortMsg,
-            icon: 'https://cdn-icons-png.flaticon.com/512/149/149071.png', // Pastikan link ini valid
+            icon: 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
             badge: 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
             vibrate: [200, 100, 200],
-            // Tambahkan tag agar notifikasi lama diganti baru jika pesan datang bertubi
-            tag: partnerId 
+            tag: partnerId // Penting: Agar notifikasi yang sama dari orang yang sama tidak menumpuk
         };
 
         const notification = new Notification(sender, options);
         
         notification.onclick = function() {
-            // Saat notifikasi diklik, fokuskan jendela dan buka chat tersebut
             window.focus();
-            
-            // Opsional: Buka chat otomatis (membutuhkan data tambahan)
-            // openChat(partnerId, ...); 
-            
+            openChat(partnerId, '', sender, partnerId.startsWith("GROUP_")); // Buka chat saat notif diklik
             this.close();
         };
     } else if (Notification.permission !== "denied") {
-        // Jika belum pernah minta izin, minta izin lagi
         Notification.requestPermission();
     }
 }
@@ -2162,3 +2181,4 @@ function handleMove(e) {
 </body>
 
 </html>
+
