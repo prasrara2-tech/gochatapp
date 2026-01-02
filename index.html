@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="image/genre/20.png">
+    <meta name="theme-color" content="#0a0a0a">
+
+    <title>GoChat Pro - Login Premium</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --bg-base: #0a0a0a;
+            --glass-white: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --accent: #d4a373; 
+            --accent-glow: rgba(212, 163, 115, 0.4);
+            --text-main: #f0f0f0;
+            --text-muted: #888;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        body {
+            margin: 0; font-family: 'Inter', 'Segoe UI', sans-serif;
+            background: var(--bg-base);
+            background-image: radial-gradient(at 0% 0%, rgba(212, 163, 115, 0.15) 0px, transparent 50%), 
+                             radial-gradient(at 100% 100%, rgba(40, 40, 40, 0.4) 0px, transparent 50%);
+            color: var(--text-main);
+            height: 100vh; display: flex; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        .login-card {
+            background: rgba(20, 20, 20, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            padding: 40px 30px;
+            width: 90%;
+            max-width: 380px;
+            border-radius: 28px;
+            text-align: center;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            animation: fadeIn 0.8s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .logo-icon { font-size: 50px; color: var(--accent); margin-bottom: 10px; text-shadow: 0 0 20px var(--accent-glow); }
+        h2 { margin: 10px 0; font-weight: 600; letter-spacing: 1px; }
+        p { color: var(--text-muted); font-size: 14px; margin-bottom: 30px; }
+        .avatar-container { position: relative; width: 110px; height: 110px; margin: 0 auto 25px; cursor: pointer; transition: 0.3s; }
+        .avatar-preview { width: 100%; height: 100%; border-radius: 24px; object-fit: cover; border: 2px solid var(--accent); background: var(--glass-white); padding: 3px; }
+        .upload-badge { position: absolute; bottom: -5px; right: -5px; background: var(--accent); width: 32px; height: 32px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #000; font-size: 14px; border: 3px solid #1a1a1a; }
+        .input-group { background: var(--glass-white); border: 1px solid var(--glass-border); border-radius: 16px; display: flex; align-items: center; padding: 5px 15px; margin-bottom: 20px; transition: 0.3s; }
+        .input-group:focus-within { border-color: var(--accent); background: rgba(255,255,255,0.05); }
+        .input-group i { color: var(--accent); margin-right: 12px; }
+        input { background: transparent; border: none; color: white; padding: 12px 0; width: 100%; font-size: 15px; }
+        .btn-login { width: 100%; padding: 15px; border: none; border-radius: 16px; background: linear-gradient(135deg, #d4a373 0%, #b88a5d 100%); color: #000; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.3s; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
+        .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+        .footer-text { margin-top: 20px; font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+    </style>
+</head>
+<body>
+
+<div class="login-card">
+    <i class="fa fa-shield-halved logo-icon"></i>
+    <h2>GoChat <span style="color:var(--accent)">Pro</span></h2>
+    <p>Secure Premium Messaging</p>
+
+    <div class="avatar-container" onclick="document.getElementById('fileInput').click()">
+        <img id="preview" class="avatar-preview" src="https://cdn-icons-png.flaticon.com/512/149/149071.png">
+        <div class="upload-badge"><i class="fa fa-camera"></i></div>
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*" style="display:none">
+    
+    <div class="input-group">
+        <i class="fa fa-user"></i>
+        <input id="username" placeholder="Buat Username..." autocomplete="off">
+    </div>
+
+    <button id="btnLogin" class="btn-login">MULAI PERCAKAPAN</button>
+
+    <div class="footer-text">
+        <i class="fa fa-lock"></i> Enkripsi End-to-End Aktif.<br>
+        ID unik akan dibuat otomatis saat Anda masuk.
+    </div>
+</div>
+
+<script>
+    // Tambahkan di baris pertama script
+if (localStorage.getItem("gochat_user")) {
+    window.location.href = "mobile.html";
+}
+    // 1. Konfigurasi Firebase (Harus Sama dengan mobile.html)
+    const firebaseConfig = {
+        apiKey: "AIzaSyCEamepceiYZtcqlcRnRmFHe0smkGfu_A4",
+        authDomain: "gochat-35172.firebaseapp.com",
+        databaseURL: "https://gochat-35172-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "gochat-35172",
+        storageBucket: "gochat-35172.appspot.com",
+        appId: "1:206571646434:web:4036d43695a00474499dbb"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let photoBase64 = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+
+    // Handle Upload Foto ke Preview
+    document.getElementById('fileInput').onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = () => {
+                document.getElementById('preview').src = reader.result;
+                photoBase64 = reader.result;
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+   async function handleLogin() {
+    const originalName = document.getElementById("username").value.trim(); // Nama asli (dengan spasi/kapital)
+    
+    if (!originalName || originalName.length < 3) {
+        return alert("Username minimal 3 karakter!");
+    }
+
+    // BUAT USER ID: Ubah ke kecil semua dan ganti spasi jadi underscore/dihapus
+    const cleanID = originalName.toLowerCase().replace(/\s+/g, '_'); 
+    
+    const btn = document.getElementById("btnLogin");
+    btn.innerText = "MENGHUBUNGKAN...";
+    btn.disabled = true;
+
+    const randomID = Math.floor(1000 + Math.random() * 9000);
+    const finalUID = `${cleanID}_${randomID}`; // ID Unik untuk sistem
+    const deviceToken = Math.random().toString(36).substring(7);
+
+    try {
+        // SIMPAN KE FIREBASE
+        await db.ref("users/" + finalUID).set({
+            username: originalName, // Tetap simpan nama asli (Budi Santoso)
+            photo: photoBase64 || "", 
+            online: true,
+            lastSeen: Date.now(),
+            device_token: deviceToken 
+        });
+
+        // SIMPAN ID KE LOCALSTORAGE
+        localStorage.setItem("gochat_user", finalUID);
+        localStorage.setItem("gochat_token", deviceToken);
+
+        // PINDAH HALAMAN
+        window.location.href = "mobile.html"; 
+    } catch (error) {
+        console.error(error);
+        alert("Gagal Login!");
+        btn.disabled = false;
+        btn.innerText = "MULAI PERCAKAPAN";
+    }
+}
+        
+    
+
+    // Event Listeners
+    document.getElementById("btnLogin").onclick = handleLogin;
+    document.getElementById("username").onkeydown = (e) => {
+        if(e.key === "Enter") handleLogin();
+    };
+</script>
+</body>
+</html>

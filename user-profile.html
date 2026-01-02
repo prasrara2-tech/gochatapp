@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Profil User - GoChat Pro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --bg-base: #0a0a0a;
+            --accent: #d4a373;
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+        body {
+            margin: 0; font-family: 'Inter', sans-serif;
+            background: var(--bg-base); color: white;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        /* PERBAIKAN HEADER: Menambah area aman untuk HP poni/notch */
+        .header {
+            width: 100%; 
+            /* Menyesuaikan jarak agar tidak tertutup poni HP */
+            padding: calc(20px + env(safe-area-inset-top)) 20px 20px 20px; 
+            display: flex; 
+            align-items: center;
+            position: sticky; 
+            top: 0; 
+            background: var(--bg-base); 
+            z-index: 100;
+            box-sizing: border-box;
+        }
+
+        /* Area klik tombol back diperbesar agar lebih mudah dipencet */
+        .back-btn { 
+            font-size: 22px; 
+            color: white; 
+            cursor: pointer; 
+            padding: 10px; /* Area klik lebih luas */
+            margin-right: 10px;
+            margin-left: -10px; /* Offset padding agar tetap di kiri */
+        }
+
+        .profile-card {
+            width: 90%; max-width: 400px; text-align: center; margin-top: 10px;
+        }
+        .avatar-container {
+            position: relative; width: 150px; height: 150px; margin: 0 auto 20px;
+        }
+        #userAvatar {
+            width: 150px; height: 150px; border-radius: 30px;
+            object-fit: cover; border: 2px solid var(--accent);
+        }
+        .info-box {
+            background: var(--glass); border: 1px solid var(--glass-border);
+            padding: 20px; border-radius: 20px; text-align: left; margin-bottom: 15px;
+        }
+        .label { color: var(--accent); font-size: 12px; font-weight: bold; text-transform: uppercase; }
+        .value { font-size: 16px; margin-top: 5px; word-break: break-all; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <div class="back-btn" onclick="history.back()">
+        <i class="fa fa-arrow-left"></i>
+    </div>
+    <b style="font-size: 18px;">Profil Kontak</b>
+</div>
+
+<div class="profile-card">
+    <div class="avatar-container">
+        <img id="userAvatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png">
+    </div>
+
+    <div class="info-box">
+        <div class="label">Nama Pengguna</div>
+        <div id="userName" class="value">Memuat...</div>
+    </div>
+
+    <div class="info-box">
+        <div class="label">Bio / Info</div>
+        <div id="userBio" class="value">Tersedia</div>
+    </div>
+
+    <div class="info-box">
+        <div class="label">ID GoChat</div>
+        <div id="userIdDisplay" class="value">...</div>
+        <i class="fa fa-copy" onclick="copyId()" style="float: right; margin-top: -20px; color: var(--accent); cursor: pointer; padding: 10px;"></i>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyCEamepceiYZtcqlcRnRmFHe0smkGfu_A4",
+        authDomain: "gochat-35172.firebaseapp.com",
+        databaseURL: "https://gochat-35172-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "gochat-35172",
+        storageBucket: "gochat-35172.appspot.com",
+        appId: "1:206571646434:web:4036d43695a00474499dbb"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const params = new URLSearchParams(window.location.search);
+    const targetId = params.get('id');
+
+    if (targetId) {
+        db.ref("users/" + targetId).once("value", s => {
+            const data = s.val();
+            if (data) {
+                document.getElementById("userName").innerText = data.username || "Tanpa Nama";
+                document.getElementById("userAvatar").src = data.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+                document.getElementById("userIdDisplay").innerText = targetId;
+                document.getElementById("userBio").innerText = data.bio || "Hi! Saya menggunakan GoChat Pro.";
+            }
+        });
+    }
+
+    function copyId() {
+        navigator.clipboard.writeText(targetId);
+        alert("ID disalin!");
+    }
+</script>
+</body>
+</html>

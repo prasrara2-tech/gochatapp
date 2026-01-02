@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="image/genre/20.png">
+    <meta name="theme-color" content="#0a0a0a">
+
+    <title>Profil Saya - GoChat Pro Premium</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <style>
+        :root {
+            --bg-base: #0a0a0a;
+            --glass-white: rgba(255, 255, 255, 0.03);
+            --glass-thick: rgba(20, 20, 20, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --accent: #d4a373; 
+            --accent-glow: rgba(212, 163, 115, 0.4);
+            --text-main: #f0f0f0;
+            --text-muted: #888;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            background: var(--bg-base);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(212, 163, 115, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(40, 40, 40, 0.4) 0px, transparent 50%);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .profile-card {
+            width: 90%;
+            max-width: 400px;
+            background: var(--glass-white);
+            backdrop-filter: blur(25px);
+            border-radius: 30px;
+            border: 1px solid var(--glass-border);
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .back-btn {
+            cursor: pointer;
+            font-size: 18px;
+            color: var(--accent);
+            transition: 0.2s;
+        }
+
+        .profile-content {
+            padding: 25px;
+            text-align: center;
+        }
+
+        .avatar-container {
+            position: relative;
+            width: 110px;
+            height: 110px;
+            margin: 0 auto 15px;
+        }
+
+        .avatar-img {
+            width: 100%;
+            height: 100%;
+            border-radius: 25px;
+            object-fit: cover;
+            border: 2px solid var(--accent);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .upload-label {
+            position: absolute;
+            bottom: -5px;
+            right: -5px;
+            background: var(--accent);
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 3px solid #111;
+        }
+
+        .input-box {
+            text-align: left;
+            background: rgba(255,255,255,0.03);
+            padding: 12px 18px;
+            border-radius: 18px;
+            margin-bottom: 15px;
+            border: 1px solid var(--glass-border);
+            transition: 0.3s;
+        }
+        .input-box:focus-within { border-color: var(--accent); background: rgba(255,255,255,0.05); }
+
+        .label-text {
+            font-size: 9px;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .field-input {
+            background: transparent;
+            border: none;
+            color: white;
+            width: 100%;
+            font-size: 15px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        .uid-display {
+            font-size: 11px;
+            color: var(--accent);
+            background: rgba(212, 163, 115, 0.1);
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-bottom: 20px;
+            cursor: pointer;
+            border: 1px solid rgba(212, 163, 115, 0.2);
+            font-weight: bold;
+        }
+
+        .save-btn {
+            width: 100%;
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 14px;
+            border-radius: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            display: none; 
+            margin-top: 5px;
+            transition: 0.3s;
+        }
+
+        .btn-logout {
+            width: 100%;
+            padding: 12px;
+            background: transparent;
+            color: #ff5e5e;
+            border: 1px solid rgba(255, 94, 94, 0.2);
+            border-radius: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        #toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: var(--accent); color: black; padding: 10px 25px;
+            border-radius: 12px; font-weight: bold; display: none; z-index: 10000;
+        }
+
+        #loader { display: none; color: var(--accent); font-size: 12px; margin-bottom: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<div class="profile-card">
+    <div class="header">
+        <i class="fa fa-chevron-left back-btn" onclick="window.location.href='mobile.html'"></i>
+        <b style="font-size: 14px; letter-spacing: 1px;">PENGATURAN PROFIL</b>
+    </div>
+
+    <div class="profile-content">
+        <div class="avatar-container">
+            <img id="displayAvatar" class="avatar-img" src="https://cdn-icons-png.flaticon.com/512/149/149071.png">
+            <label for="fileInput" class="upload-label"><i class="fa fa-camera"></i></label>
+            <input type="file" id="fileInput" hidden accept="image/*" onchange="uploadImage(this)">
+        </div>
+        
+        <div id="loader"><i class="fa fa-sync fa-spin"></i> MEMPROSES FOTO...</div>
+
+        <div class="uid-display" id="displayUID" onclick="copyUID()">ID: MEMUAT... <i class="fa fa-copy" style="margin-left:5px"></i></div>
+
+        <div class="input-box">
+            <span class="label-text">Nama Tampilan</span>
+            <input type="text" id="editUsername" class="field-input" placeholder="Masukkan nama..." oninput="checkChanges()">
+        </div>
+
+        <div class="input-box">
+            <span class="label-text">Bio Premium</span>
+            <textarea id="editBio" class="field-input" rows="2" placeholder="Tulis sesuatu tentang Anda..." oninput="checkChanges()"></textarea>
+        </div>
+
+        <button id="btnSaveAll" class="save-btn" onclick="saveChanges()">SIMPAN PERUBAHAN</button>
+
+        <button class="btn-logout" onclick="logout()"><i class="fa fa-sign-out-alt"></i> KELUAR SESI</button>
+    </div>
+</div>
+
+<script>
+  // 1. Inisialisasi Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyCEamepceiYZtcqlcRnRmFHe0smkGfu_A4",
+    authDomain: "gochat-35172.firebaseapp.com",
+    databaseURL: "https://gochat-35172-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "gochat-35172",
+    storageBucket: "gochat-35172.appspot.com",
+    appId: "1:206571646434:web:4036d43695a00474499dbb"
+};
+
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+const db = firebase.database();
+const currentUser = localStorage.getItem("gochat_user");
+
+// 2. Fungsi Load Profile (Disesuaikan dengan ID HTML Anda)
+function initProfile() {
+    if (!currentUser) {
+        window.location.href = "index.html";
+        return;
+    }
+
+    db.ref("users/" + currentUser).on("value", (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            // Update Nama ke Input Box (editUsername)
+            document.getElementById("editUsername").value = data.username || "";
+            
+            // Update Bio ke Textarea (editBio)
+            document.getElementById("editBio").value = data.bio || "";
+
+            // Update UID Display (displayUID)
+            document.getElementById("displayUID").innerHTML = `ID: ${currentUser} <i class="fa fa-copy" style="margin-left:5px"></i>`;
+
+            // Update Foto (displayAvatar)
+            if (data.photo) {
+                document.getElementById("displayAvatar").src = data.photo;
+            }
+        }
+    });
+}
+
+// 3. Fungsi Salin User ID
+function copyUID() {
+    if (!currentUser) return;
+    navigator.clipboard.writeText(currentUser).then(() => {
+        showToast("ID BERHASIL DISALIN!");
+    });
+}
+
+// 4. Fungsi Upload Foto (Base64)
+function uploadImage(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    document.getElementById("loader").style.display = "block";
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        const img = new Image();
+        img.src = e.target.result;
+        img.onload = function() {
+            // Kompresi Gambar
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 300;
+            const scaleSize = MAX_WIDTH / img.width;
+            canvas.width = MAX_WIDTH;
+            canvas.height = img.height * scaleSize;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            
+            const base64 = canvas.toDataURL('image/jpeg', 0.7);
+            
+            // Simpan ke Firebase
+            db.ref("users/" + currentUser).update({
+                photo: base64
+            }).then(() => {
+                document.getElementById("loader").style.display = "none";
+                showToast("FOTO DIPERBARUI!");
+            });
+        };
+    };
+    reader.readAsDataURL(file);
+}
+
+// 5. Simpan Perubahan Nama & Bio
+function saveChanges() {
+    const newName = document.getElementById("editUsername").value;
+    const newBio = document.getElementById("editBio").value;
+
+    db.ref("users/" + currentUser).update({
+        username: newName,
+        bio: newBio
+    }).then(() => {
+        showToast("PROFIL DISIMPAN!");
+        document.getElementById("btnSaveAll").style.display = "none";
+    });
+}
+
+// Munculkan tombol simpan jika ada ketikan
+function checkChanges() {
+    document.getElementById("btnSaveAll").style.display = "block";
+}
+
+// Toast Helper
+function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.innerText = msg;
+    t.style.display = "block";
+    setTimeout(() => { t.style.display = "none"; }, 2000);
+}
+
+// Logout
+function logout() {
+    if(confirm("Keluar dari akun?")) {
+        localStorage.clear();
+        window.location.href = "index.html";
+    }
+}
+
+document.addEventListener("DOMContentLoaded", initProfile);
+</script>
+
+</body>
+</html>
