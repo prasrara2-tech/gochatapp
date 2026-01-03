@@ -1154,84 +1154,100 @@
     /* =========================================
         CONTACTS & LIST
         ========================================= */
-    function loadContacts() {
-        // 1. MATIKAN SEMUA LISTENER YANG ADA
-        // Ini mencegah "tumpukan" listener yang membuat koneksi putus
+      function loadContacts() {
+        // 1. MATIKAN LISTENER
         if (contactsListener) {
             db.ref(`user_chats/${currentUser}`).off('value', contactsListener);
         }
 
-        // Loop melalui semua chat yang sedang terpantau untuk memastikan listener mati
+        // Loop untuk matikan listeners spesifik chat
         for (const id in chatListeners) {
             if (chatListeners[id].badge) chatListeners[id].badge.off();
             if (chatListeners[id].notif) chatListeners[id].notif.off();
         }
-        // Reset object listeners menjadi kosong
         chatListeners = {};
 
         // 2. BUAT LISTENER BARU
         const newListener = db.ref(`user_chats/${currentUser}`).on("value", async (snap) => {
+            console.log("[LOAD] Snapshot diterima.");
             
-            // Ambil data Pinned (tetap sama)
+            // Ambil Data Pinned
             const pinnedSnap = await db.ref(`user_settings/${currentUser}/pinned_chats`).once("value");
             const pinnedIds = pinnedSnap.val() || {};
             const list = document.getElementById("users");
             
-            let currentSnapshotIds = [];
-            
-            // Loop user chats (tetap sama)
+            // --- RESET TAMPILAN (HAPUS SEMUA DULU) ---
+            list.innerHTML = "";
+
+            let items = []; // Array untuk menyimpan data & elemen DOM
+
+            // 3. LOOP: BUAT/UPDATE ELEMEN (TAPI JANGAN APPEND KE LAYAR)
             snap.forEach(c => { 
                 const id = c.key;
-                currentSnapshotIds.push(id);
                 const info = c.val();
                 if(!info) return;
 
                 const el = document.getElementById(`contact-${id}`);
                 const isGrp = id.startsWith("GROUP_");
+                const isPinned = !!pinnedIds[id];
                 const refPath = isGrp ? "groups/" + id : "users/" + id;
                 
+                // Fetch Data User/Grup
                 db.ref(refPath).once("value", uSnap => {
                     const u = uSnap.val();
-                    const isPinned = !!pinnedIds[id];
                     const chatId = isGrp ? id : [currentUser, id].sort().join("_");
 
-                    // --- LOGIKA UI (Update/Create Contact) ---
+                    // Logic UI (Teks)
                     if (el) {
-                        // UPDATE
-                        if (isPinned && !el.classList.contains('pinned')) el.classList.add('pinned');
-                        if (!isPinned && el.classList.contains('pinned')) el.classList.remove('pinned');
+                        // UPDATE TEXT SAJA (Jangan append ulang)
                         const nameEl = el.querySelector("b");
                         const msgEl = el.querySelector("span");
                         if(nameEl) nameEl.innerText = `${u?.name || u?.username || id} ${isPinned ? '📌' : ''}`;
                         if(msgEl) msgEl.innerText = info.lastMsg || '...';
+                        
+                        // Update Class CSS Pinned
+                        if (isPinned && !el.classList.contains('pinned')) el.classList.add('pinned');
+                        if (!isPinned && el.classList.contains('pinned')) el.classList.remove('pinned');
 
                     } else {
-                        // CREATE
+                        // CREATE DIV (MASIH TIDAK DI APPEND)
                         let div = document.createElement("div");
                         div.id = `contact-${id}`; 
                         div.className = `user ${isPinned ? 'pinned' : ''}`;
+                        div.onclick = (e) => {
+                            // Jika klik teks, buka chat
+                            if (e.target.tagName !== 'IMG') { 
+                                openChat(id, u?.photo || '', u?.name || u?.username || id, isGrp);
+                            }
+                        };
                         
                         div.innerHTML = `
                             <img src="${u?.photo || (isGrp ? 'https://cdn-icons-png.flaticon.com/512/615/615075.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}" 
                                  onclick="event.stopPropagation(); goToTargetProfile('${id}', ${isGrp})"
                                  style="width:52px; height:52px; border-radius:16px; object-fit:cover;">
-                            <div class="user-info" onclick="openChat('${id}', '${u?.photo || ''}', '${u?.name || u?.username || id}', ${isGrp})">
+                            <div class="user-info">
                                 <b>${u?.name || u?.username || id} ${isPinned ? '📌' : ''}</b>
                                 <span>${info.lastMsg || '...'}</span>
                             </div>
                         `;
 
+                        // Setup listener konteks menu
                         setupHoldListener(div, id);
-                        list.appendChild(div);
                     }
 
-                    // --- PENTING: SETUP LISTENER NOTIFIKASI DISINI ---
-                    // Kita gunakan `if (!chatListeners[id])` agar tidak duplikat
-                    // Tapi KITA JUGA mengecek apakah listener mati
-                    
-                    // 1. Badge Listener
+                    // SIMPAN KE ARRAY ITEMS UNTUK DISORTING
+                    items.push({ 
+                        id: id, 
+                        el: el, // Simpan elemen DOM
+                        info: info,
+                        isPinned: isPinned,
+                        isGrp: isGrp
+                    });
+
+                    // SETUP LISTENER (BADGE & NOTIF)
                     if (!chatListeners[id]) chatListeners[id] = { badge: null, notif: null };
 
+                    // 1. Badge Listener
                     if (!chatListeners[id].badge) {
                         const unreadRef = db.ref("chats/" + chatId).limitToLast(50).orderByChild("seen").equalTo(false);
                         const badgeHandler = (unreadSnap) => {
@@ -1260,80 +1276,48 @@
                         chatListeners[id].badge = unreadRef; 
                     }
 
-                    // 2. NOTIFICATION LISTENER (VERSI FORCE SHOW)
-                    // Pastikan listener notif dibuat untuk setiap contact baru
+                    // 2. Notification Listener
                     if (!chatListeners[id].notif) {
                         const notifRef = db.ref("chats/" + chatId).limitToLast(20);
-                        
                         const notifHandler = (msgSnap) => {
                             const m = msgSnap.val();
                             
-                            // --- CEK 1: Validitas Data ---
+                            // Cek Data
                             if (!m || !m.text) return;
-
-                            // --- CEK 2: Bukan Pesan Sendiri ---
                             if (m.from === currentUser) return;
-
-                            // --- CEK 3: Bukan Pesan Terhapus ---
                             if (m.deleted) return;
 
-                            // --- CEK 4: Pesan Baru (15 detik terakhir) ---
-                            // HANYA notif jika pesan baru saja masuk. Ini mencegah notif spam saat refresh.
                             const isRecent = (Date.now() - m.time) < 20000; 
-                            if (!isRecent) {
-                                console.log(`[NOTIF SKIP] Pesan terlalu lama (${chatId})`);
-                                return; 
-                            }
+                            if (!isRecent) return;
 
-                            // --- CEK 5: Saya SEDANG MEMBUKA CHAT INI? ---
-                            // Jika ya, jangan notif.
-                            if (currentChatId === chatId) {
-                                console.log(`[NOTIF SKIP] Chat aktif, dibatalkan: ${chatId}`);
-                                return; 
-                            }
+                            if (currentChatId === chatId) return;
 
-                            // --- CEK 6: APLIKASI SEDANG FOKUS? ---
-                            // Jika aplikasi sedang dibuka (minimize tapi user lihat layar lain), 
-                            // biasanya browser memblokir notif. Tapi kita coba jalankan logic.
-                            
-                            // --- LOGIKA TAMPILKAN NOTIF ---
-                            console.log(`[NOTIF] MEMPROSES PESAN DARI: ${m.from}`);
-
+                            console.log(`[NOTIF] MEMPROSES DARI: ${m.from}`);
                             let notifTitle = isGrp ? (u?.name || "Grup") : (u?.username || "Teman");
                             let notifBody = "";
                             let notifIcon = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; 
                             let notifTag = `chat_${chatId}`; 
                             let soundType = 'message';
 
-                            // Cek Prefix
                             if (m.text.startsWith("CALL_JITSI:")) {
                                 const p = m.text.split(":");
                                 const callType = p[1]; 
                                 const roomName = p[2];
-
                                 notifBody = (callType === 'audio') ? "📞 Panggilan Suara Masuk..." : "📹 Panggilan Video Masuk...";
-                                notifIcon = (callType === 'audio') 
-                                    ? "https://cdn-icons-png.flaticon.com/512/5974/5974637.png" 
-                                    : "https://cdn-icons-png.flaticon.com/512/3033/3033141.png"; 
+                                notifIcon = (callType === 'audio') ? "https://cdn-icons-png.flaticon.com/512/5974/5974637.png" : "https://cdn-icons-png.flaticon.com/512/3033/3033141.png"; 
                                 notifTag = `call_${callType}_${chatId}`; 
                                 soundType = 'ringtone';
                                 showCallOverlay(roomName, callType, notifTitle, u?.photo);
-
                             } else if (m.text.startsWith("IMG:")) {
                                 notifBody = "📷 Mengirim Gambar...";
-                                notifTag = `image_${chatId}`; 
                             } else if (m.text.startsWith("TYPE:VN:")) {
                                 notifBody = "🎤 Mengirim Voice Note...";
                                 notifIcon = "https://cdn-icons-png.flaticon.com/512/3014/3014359.png"; 
-                                notifTag = `vn_${chatId}`; 
                             } else {
                                 try { notifBody = decryptData(m.text); } catch(e) { notifBody = "Pesan baru"; }
                             }
 
-                            // MAINKAN SUARA
                             playNotificationSound(soundType);
-                            
-                            // TAMPILKAN NOTIF BROWSER / SERVICE WORKER
                             showBrowserNotification(notifTitle, notifBody, notifIcon, notifTag);
                         };
                         
@@ -1343,48 +1327,30 @@
                 });
             });
 
-            // --- LOGIKA HAPUS (SCENARIO C) ---
-            const existingDivs = document.querySelectorAll('.user');
-            existingDivs.forEach(div => {
-                const divId = div.id.replace('contact-', '');
-                if (!currentSnapshotIds.includes(divId)) {
-                    if (chatListeners[divId]) {
-                        if (chatListeners[divId].badge) {
-                            chatListeners[divId].badge.off();
-                            chatListeners[divId].badge = null;
-                        }
-                        if (chatListeners[divId].notif) {
-                            chatListeners[divId].notif.off();
-                            chatListeners[divId].notif = null;
-                        }
-                        delete chatListeners[divId];
-                    }
-                    div.remove();
-                }
-            });
-
-            // --- SORTING ---
-            let items = [];
-            snap.forEach(c => { 
-                items.push({ id: c.key, info: c.val(), isPinned: !!pinnedIds[c.key] });
-            });
+            // 4. SORTING (LOGIKA URUTAN)
+            // Pinned Dulu, kemudian Time Terbaru
             items.sort((a, b) => {
                 if (a.isPinned && !b.isPinned) return -1;
                 if (!a.isPinned && b.isPinned) return 1;
                 return b.info.time - a.info.time;
             });
 
+            // DEBUG: Lihat Urutan Sortir di Console
+            console.log("[LOAD] Urutan Sortir:", items.map(i => i.id + (i.isPinned ? ' [PIN]' : '')));
+
+            // 5. APPEND KE LAYAR (Sekali Jalan Urutannya)
             items.forEach(item => {
-                const el = document.getElementById(`contact-${item.id}`);
-                if(el) {
-                    list.appendChild(el);
+                // Jika elemen DOM belum ada di layar (Baru dibuat)
+                if (!document.body.contains(item.el)) {
+                    list.appendChild(item.el);
+                } else {
+                    // Jika sudah ada, append (pindah ke posisi baru)
+                    list.appendChild(item.el); 
                 }
             });
-        });
 
-        // Simpan referensi listener baru agar bisa dimatikan nanti
-        contactsListener = newListener;
-    }
+            contactsListener = newListener;
+        });
 
     /* =========================================
         CALL OVERLAY FUNCTIONS
@@ -2446,6 +2412,7 @@
     </body>
 
     </html>
+
 
 
 
