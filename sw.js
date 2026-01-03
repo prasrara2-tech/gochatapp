@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gochat-v7'; // Versi dinaikkan agar browser mengupdate SW lama
+const CACHE_NAME = 'gochat-v8'; // Versi dinaikkan ke v8 untuk memaksa update
 
 // Daftar aset yang harus disimpan agar aplikasi bisa dibuka offline
 // PASTIKAN SEMUA FILE INI ADA DI FOLDER PROYEK ANDA!
@@ -24,9 +24,9 @@ const ASSETS_TO_CACHE = [
   'https://meet.jit.si/external_api.js' // Tambahkan Jitsi agar tampilan call tetap bisa dimuat
 ];
 
-// 1. Tahap Install: Simpan aset ke Cache
+// --- 1. Tahap Install: Simpan aset ke Cache ---
 self.addEventListener('install', (event) => {
-  console.log('[SW] Sedang menginstall Service Worker v7...');
+  console.log('[SW] Sedang menginstall Service Worker v8...');
   
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -42,9 +42,9 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// 2. Tahap Aktivasi: Bersihkan cache lama (v1-v6)
+// --- 2. Tahap Aktivasi: Bersihkan cache lama (v1-v7) ---
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Mengaktifkan service worker baru v7...');
+  console.log('[SW] Mengaktifkan service worker baru v8...');
   
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -64,7 +64,7 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
-// 3. Strategi Fetch: Network First untuk Firebase, Cache First untuk yang lain
+// --- 3. Strategi Fetch: Network First untuk Firebase, Cache First untuk yang lain ---
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
@@ -100,23 +100,30 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// 4. Menangani Pesan dari Client (Untuk Trigger Notifikasi Internal)
+// --- 4. Menangani Pesan dari Client (Untuk Trigger Notifikasi Internal) ---
 // Ini menangani pesan "postMessage" yang dikirim dari index.html
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'NOTIFICATION') {
     const data = event.data.data;
     
+    // --- TRIK BACKGROUND HITAM (DARK MODE) ---
+    // Menggunakan image data URI 1px hitam pekat agar background notifikasi jadi gelap
+    // (Efektif terutama di Android)
+    const blackBg = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+    
     const options = {
       body: data.body,
       icon: data.icon || '/image/genre/20.png',
-      badge: data.icon || '/image/genre/20.png',
+      badge: data.icon || '/image/genre/20.png', // Badge kecil GoChat
+      image: blackBg, // <--- MODIFIKASI: Jadikan background hitam
       vibrate: [200, 100, 200],
-      tag: data.tag || 'default', // PENTING: Tag berbeda agar notifikasi pisah (VN, Audio, Video)
+      tag: data.tag || 'default', // PENTING: Tag berbeda agar notifikasi pisah
       data: {
         url: data.url || '/',
         click_action: data.url || '/' 
       },
-      requireInteraction: true
+      requireInteraction: true,
+      silent: false
     };
 
     // Tampilkan notifikasi
@@ -124,7 +131,7 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// 5. Menangani Push Notification dari FCM (Jika nanti Anda setup Server Key FCM)
+// --- 5. Menangani Push Notification dari FCM (Jika nanti Anda setup Server Key FCM) ---
 self.addEventListener('push', (event) => {
   let data = { title: 'GoChat Pro', body: 'Ada pesan baru masuk!' };
   
@@ -135,13 +142,17 @@ self.addEventListener('push', (event) => {
   } catch (e) {
     if(event.data) data.body = event.data.text();
   }
+  
+  // Background Hitam juga untuk FCM Push
+  const blackBg = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
 
   const options = {
     body: data.body,
     icon: '/image/genre/20.png',
     badge: '/image/genre/20.png',
+    image: blackBg, // <--- MODIFIKASI: Jadikan background hitam
     vibrate: [200, 100, 200],
-    tag: data.tag || 'push_message', // PENTING: Tag berbeda
+    tag: data.tag || 'push_message',
     data: {
       url: data.url || '/',
       click_action: data.url || '/'
@@ -154,7 +165,7 @@ self.addEventListener('push', (event) => {
   );
 });
 
-// 6. Menangani Klik pada Notifikasi
+// --- 6. Menangani Klik pada Notifikasi ---
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
