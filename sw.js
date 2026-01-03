@@ -1,37 +1,39 @@
-const CACHE_NAME = 'gochat-v6';
+const CACHE_NAME = 'gochat-v7'; // Versi dinaikkan agar browser mengupdate SW lama
 
 // Daftar aset yang harus disimpan agar aplikasi bisa dibuka offline
 // PASTIKAN SEMUA FILE INI ADA DI FOLDER PROYEK ANDA!
 const ASSETS_TO_CACHE = [
-  '/',                      // Root directory
-  '/index.html',            // Halaman Login
-  '/mobile.html',           // Halaman Chat Utama (Sesuaikan jika namanya beda)
+  '/',                      // Root directory (akan menuju index.html otomatis)
+  '/index.html',            // Halaman Utama Chat (SAMA dengan file HTML yang Anda pakai)
   '/manifest.json',
-  '/profile.html',          // Tambahkan jika file ini ada
-  '/user-profile.html',     // Tambahkan jika file ini ada
-  '/group-profile.html',    // Tambahkan jika file ini ada
-  '/image/genre/20.png',    // Icon aplikasi
-  '/note.mp3',              // Suara notifikasi
-  '/night-owl.mp3',         // Suara ringtone
   
-  // External Libs (CDN)
+  // Halaman Profil (Jika Anda memisahkannya)
+  '/profile.html',          
+  '/user-profile.html',     
+  '/group-profile.html',    
+
+  // Aset Lokal (Pastikan folder 'image' dan file ada)
+  '/image/genre/20.png',    // Icon aplikasi
+  
+  // External Libs (CDN) - Wajib dicachekan untuk performa & offline
   'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css',
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap',
   'https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js',
   'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js',
-  'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js'
+  'https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js',
+  'https://meet.jit.si/external_api.js' // Tambahkan Jitsi agar tampilan call tetap bisa dimuat
 ];
 
 // 1. Tahap Install: Simpan aset ke Cache
 self.addEventListener('install', (event) => {
-  console.log('[SW] Sedang menginstall...');
+  console.log('[SW] Sedang menginstall Service Worker v7...');
   
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[SW] Mengunduh aset ke cache...');
       return cache.addAll(ASSETS_TO_CACHE).catch((error) => {
         console.error('[SW] Gagal mengunduh aset:', error);
-        throw error; // Melempar error agar kita tahu file mana yang 404
+        // Jangan throw error disini, agar SW tetap jalan meskipun ada file yang tidak ketemu
       });
     })
   );
@@ -40,15 +42,15 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// 2. Tahap Aktivasi: Bersihkan cache lama
+// 2. Tahap Aktivasi: Bersihkan cache lama (v1-v6)
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Mengaktifkan service worker baru...');
+  console.log('[SW] Mengaktifkan service worker baru v7...');
   
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cache) => {
-          // Hapus cache dengan nama lama (misal: gochat-v1)
+          // Hapus cache dengan nama lama
           if (cache !== CACHE_NAME) {
             console.log('[SW] Menghapus cache lama:', cache);
             return caches.delete(cache);
@@ -62,15 +64,16 @@ self.addEventListener('activate', (event) => {
   return self.clients.claim();
 });
 
-// 3. Strategi Fetch: Cache First (Statis), Network Only (Dinamis)
+// 3. Strategi Fetch: Network First untuk Firebase, Cache First untuk yang lain
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // --- PENTING: JANGAN CACHE DATABASE & API EKSTERNAL ---
-  // Firebase Database dan Cloudinary harus selalu diambil dari Network 
+  // Firebase Database, Cloudinary, dan Jitsi harus selalu diambil dari Network 
   // agar data chat selalu up-to-date.
   if (url.hostname.includes('firebasedatabase.app') || 
-      url.hostname.includes('cloudinary.com')) {
+      url.hostname.includes('cloudinary.com') ||
+      url.hostname.includes('jit.si')) { // Tambahkan Jitsi ke exception
     event.respondWith(fetch(event.request));
     return;
   }
@@ -80,6 +83,7 @@ self.addEventListener('fetch', (event) => {
   // 2. Ambil dari Network di background (Update)
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
+      // Ambil data dari network
       const fetchPromise = fetch(event.request).then((networkResponse) => {
         // Jika network sukses, simpan update ke cache
         if (networkResponse && networkResponse.status === 200) {
@@ -96,7 +100,31 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// 4. Menangani Push Notification
+// 4. Menangani Pesan dari Client (Untuk Trigger Notifikasi Internal)
+// Ini menangani pesan "postMessage" yang dikirim dari index.html
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'NOTIFICATION') {
+    const data = event.data.data;
+    
+    const options = {
+      body: data.body,
+      icon: data.icon || '/image/genre/20.png',
+      badge: data.icon || '/image/genre/20.png',
+      vibrate: [200, 100, 200],
+      tag: data.tag || 'default', // PENTING: Tag berbeda agar notifikasi pisah (VN, Audio, Video)
+      data: {
+        url: data.url || '/',
+        click_action: data.url || '/' 
+      },
+      requireInteraction: true
+    };
+
+    // Tampilkan notifikasi
+    self.registration.showNotification(data.title, options);
+  }
+});
+
+// 5. Menangani Push Notification dari FCM (Jika nanti Anda setup Server Key FCM)
 self.addEventListener('push', (event) => {
   let data = { title: 'GoChat Pro', body: 'Ada pesan baru masuk!' };
   
@@ -105,20 +133,20 @@ self.addEventListener('push', (event) => {
       data = event.data.json();
     }
   } catch (e) {
-    // Fallback jika data bukan JSON
     if(event.data) data.body = event.data.text();
   }
 
   const options = {
     body: data.body,
-    icon: '/image/genre/20.png', // Pastikan path sesuai
+    icon: '/image/genre/20.png',
     badge: '/image/genre/20.png',
     vibrate: [200, 100, 200],
+    tag: data.tag || 'push_message', // PENTING: Tag berbeda
     data: {
-      url: '/mobile.html',
-      click_action: '/mobile.html' // Kadang diperlukan oleh Android lama
+      url: data.url || '/',
+      click_action: data.url || '/'
     },
-    requireInteraction: true // Membuat notifikasi tetap ada sampai diklik
+    requireInteraction: true
   };
 
   event.waitUntil(
@@ -126,7 +154,7 @@ self.addEventListener('push', (event) => {
   );
 });
 
-// 5. Menangani Klik pada Notifikasi
+// 6. Menangani Klik pada Notifikasi
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
@@ -134,13 +162,14 @@ self.addEventListener('notificationclick', (event) => {
     clients.matchAll({ type: 'window' }).then((clientList) => {
       // Cek apakah aplikasi sudah terbuka
       for (const client of clientList) {
-        if (client.url.includes('mobile.html') && 'focus' in client) {
+        // Cek apakah URL client sesuai target URL dari notifikasi
+        if (client.url.includes(event.notification.data.url) && 'focus' in client) {
           return client.focus();
         }
       }
       // Jika belum terbuka, buka baru
       if (clients.openWindow) {
-        return clients.openWindow('/mobile.html');
+        return clients.openWindow(event.notification.data.url);
       }
     })
   );
