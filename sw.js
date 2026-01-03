@@ -59,15 +59,14 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // --- PENTING: JANGAN CACHE DATABASE, API, & AUDIO EKSTERNAL ---
-  // Firebase Database, Cloudinary, Jitsi, dan Assets Mixkit harus selalu ambil dari Network.
-  // Kita tidak me-cache audio MP3 karena file-nya kecil & tidak support offline PWA standar.
+  // --- PENTING: JANGAN CACHE DATABASE & API EKSTERNAL ---
+  // Firebase Database, Cloudinary, dan Jitsi harus selalu diambil dari Network 
+  // agar data chat selalu up-to-date.
   if (url.hostname.includes('firebasedatabase.app') || 
       url.hostname.includes('cloudinary.com') ||
-      url.hostname.includes('jit.si') ||
-      url.hostname.includes('assets.mixkit.co')) { // <--- TAMBAHKAN BIKANAN INI
+      url.hostname.includes('jit.si')) {
     
-    // Cukup kembalikan request ke network saja, jangan cache
+    // Cukup fetch saja, jangan cache (mencegah error clone)
     event.respondWith(fetch(event.request));
     return;
   }
@@ -77,12 +76,15 @@ self.addEventListener('fetch', (event) => {
   // 2. Ambil dari Network di background (Update)
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      // Ambil data dari network
+      // Simpan request object di variabel agar bisa dipakai lagi
+      const requestToCache = event.request;
+
       const fetchPromise = fetch(event.request).then((networkResponse) => {
         // Jika network sukses, simpan update ke cache
         if (networkResponse && networkResponse.status === 200) {
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, networkResponse.clone());
+            // --- PERBAIKAN: GUNAKAN requestToCache KETIMBAL networkResponse.clone() ---
+            cache.put(requestToCache, networkResponse.clone());
           });
         }
         return networkResponse;
@@ -92,23 +94,7 @@ self.addEventListener('fetch', (event) => {
       return cachedResponse || fetchPromise;
     })
   );
-});
-
-  // Cache First untuk Assets Statis
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, networkResponse.clone());
-          });
-        }
-        return networkResponse;
-      });
-
-      return cachedResponse || fetchPromise;
-    })
-  );
+});;
 
 
 // --- 4. HANDLE MESSAGE (POSTMESSAGE DARI JS) ---
@@ -184,5 +170,6 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+
 
 
