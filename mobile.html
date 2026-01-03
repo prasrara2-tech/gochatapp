@@ -2099,7 +2099,7 @@
         });
     }
 
-    function showChatMenu(x, y, targetId) {
+       function showChatMenu(x, y, targetId) {
         let menu = document.getElementById('chat-context-menu');
         
         if (!menu) {
@@ -2117,41 +2117,34 @@
             document.body.appendChild(menu);
         }
 
-        db.ref(`user_settings/${currentUser}/pinned_chats/${targetId}`).once('value', (snapshot) => {
-            const isPinned = snapshot.exists();
-            const pinText = isPinned ? "Lepas Sematan" : "Sematkan";
-            const pinIcon = isPinned ? "fa-thumbtack" : "fa-thumbtack"; 
-            const pinColor = isPinned ? "#ff5e5e" : "white"; 
+        // JANGAN AMBIL DATA PIN LAGI, KITA HAPUS KODE DIBAWAH INI
+        // db.ref(`user_settings/${currentUser}/pinned_chats/${targetId}`).once('value', (snapshot) => { ... }); 
 
-            menu.innerHTML = `
-                <div onclick="pinChat('${targetId}')" style="padding: 10px 15px; cursor: pointer; color: ${pinColor};">
-                    <i class="fas ${pinIcon}" style="margin-right:10px;"></i> ${pinText}
-                </div>
-                <div onclick="deleteChat('${targetId}')" style="padding: 10px 15px; cursor: pointer; color: #ff5e5e;">
-                    <i class="fas fa-trash" style="margin-right:10px;"></i> Hapus Chat
-                </div>
-            `;
+        // LANGSUNG ISI MENU HANYA "HAPUS CHAT"
+        menu.innerHTML = `
+            <div onclick="deleteChat('${targetId}')" style="padding: 10px 15px; cursor: pointer; color: #ff5e5e;">
+                <i class="fas fa-trash" style="margin-right:10px;"></i> Hapus Chat
+            </div>
+        `;
 
-            const menuWidth = 160;
-            const menuHeight = 100;
-            let finalX = x;
-            let finalY = y;
+        const menuWidth = 160;
+        const menuHeight = 50; // Tinggi berkurang karena hanya 1 menu
+        let finalX = x;
+        let finalY = y;
 
-            if (x + menuWidth > window.innerWidth) finalX = window.innerWidth - menuWidth - 10;
-            if (y + menuHeight > window.innerHeight) finalY = window.innerHeight - menuHeight - 10;
+        if (x + menuWidth > window.innerWidth) finalX = window.innerWidth - menuWidth - 10;
+        if (y + menuHeight > window.innerHeight) finalY = window.innerHeight - menuHeight - 10;
 
-            menu.style.left = finalX + 'px';
-            menu.style.top = finalY + 'px';
-            menu.style.display = 'block';
+        menu.style.left = finalX + 'px';
+        menu.style.top = finalY + 'px';
+        menu.style.display = 'block';
 
-            const closeMenu = () => {
-                menu.style.display = 'none';
-                document.removeEventListener('click', closeMenu);
-            };
-            setTimeout(() => document.addEventListener('click', closeMenu), 10);
-        });
+        const closeMenu = () => {
+            menu.style.display = 'none';
+            document.removeEventListener('click', closeMenu);
+        };
+        setTimeout(() => document.addEventListener('click', closeMenu), 10);
     }
-
     function openMenu(x, y) {
         const menu = document.getElementById('contextMenu');
         const overlay = document.getElementById('menuOverlay');
@@ -2359,6 +2352,7 @@
     </body>
 
     </html>
+
 
 
 
