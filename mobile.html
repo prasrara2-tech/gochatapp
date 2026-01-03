@@ -474,6 +474,9 @@
                     <div id="myName" style="margin-left:12px; font-weight:600; font-size:18px;">...</div>
                 </div>
                 <div style="display:flex; gap:18px;">
+                    <!-- Tombol Notif (Jika gagal auto request) -->
+                    <i id="btnEnableNotif" class="fa fa-bell-slash" onclick="requestNotificationPermission()" style="color:#ff5e5e; font-size:18px; cursor:pointer; display:none;" title="Aktifkan Notifikasi"></i>
+                    
                     <i class="fa fa-users" onclick="openCreateGroup()" style="color:var(--accent); font-size:18px; cursor:pointer;"></i>
                     <i class="fa fa-user-plus" onclick="openAddFriend()" style="color:var(--accent); font-size:18px; cursor:pointer;"></i>
                     <i class="fa fa-sign-out-alt" onclick="logout()" style="color:#ff5e5e; font-size:18px; cursor:pointer;"></i>
@@ -670,16 +673,43 @@
         isWindowFocused = false;
     });
 
+    // --- FUNGSI BARU: REQUEST PERMISSION MANUAL ---
+    async function requestNotificationPermission() {
+        if (!("Notification" in window)) {
+            alert("Browser ini tidak mendukung notifikasi desktop");
+            return;
+        }
+        
+        const permission = await Notification.requestPermission();
+        if (permission === "granted") {
+            showToast("Notifikasi Diaktifkan!");
+            document.getElementById("btnEnableNotif").style.display = "none";
+        } else {
+            showToast("Notifikasi Ditolak");
+        }
+    }
+
     async function initApp() {
         if(!currentUser) { window.location.href="index.html"; return; }
         
         console.log("🚀 [INIT] Starting App...");
         
         // --- 1. REQUEST NOTIFICATION PERMISSION FIRST ---
-        if (Notification.permission === "default") {
+        // Browser modern memblokir request permission jika tidak dipicu oleh user gesture (klik).
+        // Kita coba, jika gagal, kita tampilkan tombol manual.
+        if ("Notification" in window && Notification.permission === "default") {
             console.log("📢 [INIT] Requesting notification permission...");
-            const permission = await Notification.requestPermission();
-            console.log("📢 [INIT] Permission result:", permission);
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission !== "granted") {
+                    document.getElementById("btnEnableNotif").style.display = "block";
+                }
+            } catch (e) {
+                console.warn("Permintaan notifikasi otomatis diblokir browser. Gunakan tombol manual.", e);
+                document.getElementById("btnEnableNotif").style.display = "block";
+            }
+        } else if (Notification.permission === "denied") {
+            document.getElementById("btnEnableNotif").style.display = "block";
         } else {
             console.log("📢 [INIT] Current permission:", Notification.permission);
         }
@@ -884,7 +914,7 @@
     document.addEventListener('click', unlockAudioContext, { once: true });
     document.addEventListener('touchstart', unlockAudioContext, { once: true });
     /* =========================================
-        CONTACTS & LIST
+        CONTACTS & LIST (FIXED NOTIFICATION LOGIC)
         ========================================= */
     function loadContacts() {
         // 1. Matikan listener lama
@@ -950,13 +980,12 @@
 
                         // 1. Listener Badge
                         if (!chatListeners[id].badge) {
-                            const unreadRef = db.ref("chats/" + chatId).limitToLast(30).orderByChild("seen").equalTo(false);
+                            const unreadRef = db.ref("chats/" + chatId).limitToLast(50).orderByChild("seen").equalTo(false);
                             
                             const badgeHandler = (unreadSnap) => {
                                 let count = 0;
                                 unreadSnap.forEach(child => { 
                                     const m = child.val();
-                                    // FIX: Cek apakah data pesan null
                                     if (!m) return; 
                                     if(m.from !== currentUser) count++; 
                                 });
@@ -981,56 +1010,59 @@
                             chatListeners[id].badge = unreadRef; 
                         }
 
-                        // 2. Listener Notifikasi (FIX DISINI)
+                        // 2. Listener Notifikasi (FIX DISINI - PISAH DARI BADGE)
                         if (!chatListeners[id].notif) {
+                            // Kita pakai 'child_added' untuk mendeteksi pesan masuk secara *real-time*
                             const notifRef = db.ref("chats/" + chatId).limitToLast(1);
                             
                             const notifHandler = (msgSnap) => {
-                                msgSnap.forEach(s => {
-                                    const m = s.val();
-                                    
-                                    // --- FIX KRUSIAL: CEK DATA VALID & PESAN BARU ---
-                                    // Cek apakah m ada dan m.text ada sebelum baca properti
-                                    if (!m || !m.text) return;
+                                // msgSnap adalah DataSnapshot dari event child_added
+                                const m = msgSnap.val();
+                                
+                                // --- FIX KRUSIAL: CEK DATA VALID ---
+                                if (!m || !m.text) return;
 
-                                    // --- FIX: Cek apakah pesan baru (mencegah spam notif saat refresh) ---
-                                    // Hanya notif jika pesan dikirim < 10 detik yang lalu
-                                    const isRecent = (Date.now() - m.time) < 10000;
-                                    if(!isRecent) return; 
+                                // --- FIX: CEK PENGIRIM ---
+                                // Jangan notif jika pesan dari saya sendiri
+                                if (m.from === currentUser) return;
 
-                                    console.log(`[DEBUG] Pesan Masuk: From=${m.from} | MyID=${currentUser}`);
+                                // Jangan notif jika saya sedang membuka chat tersebut
+                                if (currentChatId === chatId) return;
+                                
+                                // Jangan notif jika pesan sudah dihapus
+                                if (m.deleted) return;
 
-                                    if (m.from !== currentUser && currentChatId !== chatId && !m.deleted) {
-                                        
-                                        let notifBody = "";
-                                        let soundType = 'message';
+                                // --- LOGIKA NOTIFIKASI ---
+                                let notifBody = "";
+                                let soundType = 'message';
 
-                                        if (m.text.startsWith("CALL_JITSI:")) {
-                                            soundType = 'ringtone'; 
-                                            notifBody = "📞 Panggilan Masuk...";
-                                        } 
-                                        else if (m.text.startsWith("IMG:")) {
-                                            notifBody = "📷 Mengirim Gambar...";
-                                        } 
-                                        else if (m.text.startsWith("TYPE:VN:")) {
-                                            notifBody = "🎤 Mengirim Voice Note...";
-                                        } 
-                                        else {
-                                            try { notifBody = decryptData(m.text); } catch(e) { notifBody = "Pesan baru"; }
-                                        }
+                                // Cek Tipe Pesan
+                                if (m.text.startsWith("CALL_JITSI:")) {
+                                    soundType = 'ringtone'; 
+                                    notifBody = "📞 Panggilan Masuk...";
+                                } 
+                                else if (m.text.startsWith("IMG:")) {
+                                    notifBody = "📷 Mengirim Gambar...";
+                                } 
+                                else if (m.text.startsWith("TYPE:VN:")) {
+                                    notifBody = "🎤 Mengirim Voice Note...";
+                                } 
+                                else {
+                                    try { notifBody = decryptData(m.text); } catch(e) { notifBody = "Pesan baru"; }
+                                }
 
-                                        playNotificationSound(soundType);
+                                // MAINKAN SUARA
+                                playNotificationSound(soundType);
 
-                                        const isUserTyping = (document.activeElement.id === 'text');
-                                        
-                                        if (!isUserTyping) {
-                                            const senderName = isGrp ? (u?.name || "Grup") : (u?.username || "Teman");
-                                            showSystemNotification(senderName, notifBody, id);
-                                        }
-                                    }
-                                });
+                                // TAMPILKAN POPUP BROWSER (Hanya jika izin diberikan)
+                                // Kita cek lagi permission di sini untuk keamanan
+                                if (Notification.permission === "granted") {
+                                    const senderName = isGrp ? (u?.name || "Grup") : (u?.username || "Teman");
+                                    showSystemNotification(senderName, notifBody, id);
+                                }
                             };
                             
+                            // Gunakan 'child_added' bukan 'value' agar efisien
                             notifRef.on("child_added", notifHandler);
                             chatListeners[id].notif = notifRef;
                         }
@@ -1421,7 +1453,7 @@
                 }
             } else {
                 if (!m.seen) {
-                    db.ref(`chats/${currentChatId}/${key}`).update({ seen: true });
+                    db.ref("chats/" + currentChatId + "/" + key).update({ seen: true });
                 }
             }
         }
