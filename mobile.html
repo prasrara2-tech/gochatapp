@@ -809,41 +809,88 @@
     }
 
     async function initApp() {
-        if(!currentUser) { window.location.href="index.html"; return; }
-        
-        console.log("🚀 [INIT] Starting App...");
-        
-        if ("Notification" in window && Notification.permission === "default") {
-            try {
-                const permission = await Notification.requestPermission();
-                if (permission === "granted") { registerServiceWorker(); }
-                else { const btn = document.getElementById("btnEnableNotif"); if(btn) btn.style.display = "block"; }
-            } catch (e) {
-                console.warn("Permintaan notifikasi otomatis diblokir.", e);
-                const btn = document.getElementById("btnEnableNotif"); if(btn) btn.style.display = "block";
-            }
-        } else if (Notification.permission === "granted") { registerServiceWorker(); }
-        
-        unlockAudioContext();
-        
-        db.ref("users/" + currentUser).on("value", s => {
-            const d = s.val();
-            if(d) {
-                const nameEl = document.getElementById("myName");
-                const photoEl = document.getElementById("myPhotos");
-                if(nameEl) nameEl.innerText = d.username;
-                if(photoEl) photoEl.src = d.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-                db.ref("users/" + currentUser).update({ online: true, lastSeen: Date.now() });
-            }
-        });
-
-        db.ref("users/" + currentUser + "/online").onDisconnect().set(false);
-        db.ref("users/" + currentUser + "/lastSeen").onDisconnect().set(Date.now());
-
-        loadContacts();
-        setupEmoji();
-        setupTypingListener();
+    console.log("🚀 [INIT] Starting App...");
+    
+    // 1. CEK USER & REDIRECT (JANGAN PAKE AWAIT)
+    // Ini harus JALAN SEKARANG, jangan ditunggu.
+    const currentUser = localStorage.getItem("gochat_user");
+    if(!currentUser) {
+        // Jangan redirect ke index.html jika file ini index.html (akan looping)
+        // Kita biarkan kosong atau arahkan ke login jika ada
+        console.warn("User tidak ditemukan di LocalStorage.");
+        // window.location.href="login.html"; // Hapus ini jika tidak punya login.html
+        return; // STOP JALAN DISINI JIKA TIDAK ADA USER
     }
+
+    // 2. SETUP FIREBASE (LANSUNG JALAN)
+    // Jangan pakai 'await' di sini agar tidak stuck
+    try {
+        firebase.initializeApp(firebaseConfig);
+        console.log("✅ Firebase Initialized");
+    } catch (e) {
+        console.error("❌ Firebase Init Error:", e);
+        return; // Stop jika firebase error
+    }
+
+    const db = firebase.database();
+
+    // 3. REQUEST NOTIFIKASI (DIBUNGKUS DALAM TRY CATCH, JANGAN AWAIT)
+    // Kita jalankan ini di "background" (Fire and Forget)
+    if ("Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission().then(permission => {
+            if (permission === "granted") {
+                console.log("✅ Notifikasi Granted");
+                registerServiceWorker();
+            } else {
+                console.log("⚠️ Notifikasi Denied/Default");
+                const btn = document.getElementById("btnEnableNotif");
+                if(btn) btn.style.display = "block";
+            }
+        }).catch(e => {
+            console.warn("Gagal request notifikasi:", e);
+            const btn = document.getElementById("btnEnableNotif");
+            if(btn) btn.style.display = "block";
+        });
+    } else if (Notification.permission === "granted") {
+        registerServiceWorker();
+    }
+    
+    // 4. SETUP USER DATA (MUNGKIN INI SUMBER STUCK-nya)
+    // Kita gunakan .on() bukan .once().value() agar bisa update real-time
+    // Dan KITA JANGAN AWAIT proses ini.
+    db.ref("users/" + currentUser).on("value", s => {
+        const d = s.val();
+        if(d) {
+            const nameEl = document.getElementById("myName");
+            const photoEl = document.getElementById("myPhotos");
+            if(nameEl) nameEl.innerText = d.username;
+            if(photoEl) photoEl.src = d.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+            
+            // Update status online (juga jangan di-await)
+            db.ref("users/" + currentUser + "/online").set(true);
+            db.ref("users/" + currentUser + "/lastSeen").set(Date.now());
+            
+            console.log("✅ User Data Loaded:", d.username);
+        }
+    });
+
+    // 5. SETUP DISCONNECT (JANGAN DI-AWAIT)
+    db.ref("users/" + currentUser + "/online").onDisconnect().set(false);
+    db.ref("users/" + currentPartnerId + "/lastSeen").onDisconnect().set(Date.now());
+
+    // 6. LOAD CONTACTS (FUNGSI PENTING)
+    // Pastikan fungsi loadContacts() TIDAK PAKE 'await' di dalamnya
+    loadContacts();
+    
+    // 7. SETUP LAINNYA
+    setupEmoji();
+    setupTypingListener();
+    
+    // 8. UNLOCK AUDIO
+    unlockAudioContext();
+
+    console.log("✅ [INIT] App initialization complete");
+}
 
     /* =========================================
         GROUP & FRIENDS
