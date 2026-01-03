@@ -1564,27 +1564,23 @@
 
         const msgsDiv = document.getElementById("msgs");
         msgsDiv.innerHTML = "";
-
-        activeChatRef.on("child_added", snap => {
-            const m = snap.val();
-            if(!m) return;
-            renderMessage(m, snap.key);
-            msgsDiv.scrollTop = msgsDiv.scrollHeight;
-            
-            if (m.from !== currentUser && !m.seen) {
-                db.ref("chats/" + currentChatId + "/" + snap.key).update({ seen: true })
-                    .catch(e => console.log("Gagal update seen:", e));
-            }
-        });
-
+   
         activeChatRef.on("child_changed", snap => {
-            const oldMsg = document.getElementById("msg-wrap-" + snap.key);
-            if(oldMsg) {
-                oldMsg.remove();
-                renderMessage(snap.val(), snap.key);
-            }
-        });
+        const key = snap.key;
+        
+        // --- PERBAIKAN: JANGAN RENDER JIKA KITA SEDANG MELIHAT VIEW ONCE ---
+        if (key === viewOnceIgnoredKey) {
+            viewOnceIgnoredKey = null; // Reset flag
+            console.log("[VIEW ONCE] Menghindari auto-render delete.");
+            return; // JANGAN RENDER ULANG! (Tinggalkan gambar yang sudah dibuka tampil)
+        }
 
+        const oldMsg = document.getElementById("msg-wrap-" + key);
+        if(oldMsg) {
+            oldMsg.remove();
+            renderMessage(snap.val(), key);
+        }
+    });
         const typingRef = db.ref(`typing/${currentChatId}`);
         watchTyping(currentChatId);
 
@@ -1747,27 +1743,34 @@
         } else {
             let textBody = "";
             try {
-                if (m.text.startsWith("IMG:")) {
-                    const url = decryptData(m.text.replace("IMG:", ""));
-
-                    // --- MODIFIKASI VIEW ONCE ---
-                    if (m.viewOnce) {
-                        // Tampilan Sekali Lihat (Buram + Overlay)
-                        textBody = `
-                            <div class="view-once-blur" onclick="openViewOnceMessage('${key}')">
-                                <img src="${url}" style="width:100%; display:block; filter:blur(25px);">
-                                <div class="view-once-overlay">
-                                    <i class="fas fa-eye" style="font-size:30px; margin-bottom:5px;"></i>
-                                    <div style="font-size:12px;">Klik untuk melihat</div>
-                                    <div style="font-size:10px; color:#ff9999;">(Otomatis terhapus)</div>
-                                </div>
-                            </div>
-                        `;
-                    } else {
-                        // Tampilan Gambar Normal
-                        textBody = `<img src="${url}" onclick="window.open('${url}')" style="max-width:100%; border-radius:10px; cursor:pointer;">`;
-                    }
-                } 
+                 if (m.text.startsWith("IMG:")) {
+        const url = decryptData(m.text.replace("IMG:", ""));
+        
+        // --- DEBUG: Cek URL ---
+        if (!url || url === "" || url.includes("[Pesan Terenkripsi]")) {
+            textBody = `<div style="background:#ffcccc; color:#990000; padding:10px; border-radius:10px; text-align:center;">
+                <i class="fas fa-exclamation-triangle"></i><br>
+                Gambar error/gagal dimuat
+            </div>`;
+        } 
+        // --- LOGIKA VIEW ONCE ---
+        else if (m.viewOnce) {
+            // Tampilan Sekali Lihat (Buram + Overlay)
+            textBody = `
+                <div class="view-once-blur" onclick="openViewOnceMessage('${key}')">
+                    <img src="${url}" style="width:100%; display:block; filter:blur(25px);">
+                    <div class="view-once-overlay">
+                        <i class="fas fa-eye" style="font-size:30px; margin-bottom:5px;"></i>
+                        <div style="font-size:12px;">Klik untuk melihat</div>
+                        <div style="font-size:10px; color:#ff9999;">(Otomatis terhapus)</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Tampilan Gambar Normal
+            textBody = `<img src="${url}" onclick="window.open('${url}')" style="max-width:100%; border-radius:10px; cursor:pointer;">`;
+        }
+    }
                 else if (m.text.startsWith("TYPE:VN:")) {
                     const url = decryptData(m.text.replace("TYPE:VN:", ""));
                     textBody = `<div class="vn-container" style="display:flex; align-items:center; gap:8px; padding:5px 0;"><audio src="${url}" controls class="vn-player" style="max-width:200px; height:30px;"></audio></div>`;
@@ -2578,43 +2581,48 @@
      function openViewOnceMessage(key) {
         if (!currentChatId) return;
 
-        // 1. Ambil data pesan dulu dari DB
+        // 1. Ambil data pesan dari DB
         db.ref("chats/" + currentChatId + "/" + key).once("value", snap => {
             const m = snap.val();
             if (!m || !m.viewOnce) return;
 
-            // 2. Update pesan di DOM agar terlihat gambar aslinya
             const msgEl = document.getElementById("msg-wrap-" + key);
             if (msgEl) {
                 const url = decryptData(m.text.replace("IMG:", ""));
                 
-                // Ganti konten menjadi gambar normal
-                const newContent = `
-                    <div class="msg">
+                // 2. UPDATE VISUAL TAMPILAN (Tunjukkan gambar jernih)
+                // Kita timpa konten div .msg, bukan div .msg-wrap, agar meta (waktu) tetap ada
+                const contentDiv = msgEl.querySelector('.msg');
+                if (contentDiv) {
+                    contentDiv.innerHTML = `
                         <img src="${url}" onclick="window.open('${url}')" style="max-width:100%; border-radius:10px; cursor:pointer;">
-                    <div style="font-size:10px; text-align:center; opacity:0.6; margin-top:5px;">Telah dilihat</div>
-                    ${m.edited ? `<small style="opacity:0.5; font-size:9px; margin-left:5px;">(diedit)</small>` : ""}
-                    ${m.forwarded ? `<div class="forward-tag" style="font-size:10px; opacity:0.6; margin-bottom:2px;"><i class="fa fa-share"></i> Diteruskan</div>` : ""}
-                    ${m.replyTo ? /* (sederhanakan logic reply di sini) */ "" : ""}
-                    </div>
-                    <div class="msg-meta" style="display:flex; align-items:center; gap:4px; justify-content:flex-end; font-size:10px; opacity:0.7; margin-top:2px;">
-                        ${new Date(m.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 
-                        ${m.from === currentUser ? (m.seen ? `<span style="color:var(--accent); font-weight:bold;">✓✓</span>` : `✓`) : ""}
-                    </div>
-                `;
-                
-                msgEl.innerHTML = newContent;
-            }
+                        <div style="font-size:10px; text-align:center; opacity:0.6; margin-top:5px;">Gambar telah dilihat</div>
+                        ${m.edited ? `<small style="opacity:0.5; font-size:9px; margin-left:5px;">(diedit)</small>` : ""}
+                        ${m.forwarded ? `<div class="forward-tag" style="font-size:10px; opacity:0.6; margin-bottom:2px;"><i class="fa fa-share"></i> Diteruskan</div>` : ""}
+                    `;
+                    
+                    // Hapus style blur/overlay jika ada (clean up)
+                    if (msgEl.querySelector('.view-once-blur')) {
+                        const blurWrap = msgEl.querySelector('.view-once-blur');
+                        blurWrap.classList.remove('view-once-blur'); 
+                        blurWrap.removeAttribute('onclick');
+                        blurWrap.removeAttribute('style');
+                    }
+                }
 
-            // 3. HAPUS PESAN DARI DATABASE (Sekali Lihat Berarti Hilang)
-            // Kita ubah text jadi "Pesan dilihat" dan set deleted: true
-            db.ref("chats/" + currentChatId + "/" + key).update({
-                deleted: true,
-                text: encryptData("👁️ Gambar dilihat sekali"),
-                replyTo: null,
-                forwarded: null,
-                viewOnce: false // Matikan flag
-            });
+                // 3. SET FLAG AGAR LISTENER TIDAK MENGHAPUS TAMPILAN BARU INI
+                viewOnceIgnoredKey = key;
+
+                // 4. HAPUS PESAN DARI DATABASE (Bisa jeda sedikit delay jika mau user baca dulu, tapi langsung saja)
+                // Kita ubah text jadi "Pesan dilihat" dan set deleted: true
+                db.ref("chats/" + currentChatId + "/" + key).update({
+                    deleted: true,
+                    text: encryptData("👁️ Gambar dilihat sekali"),
+                    replyTo: null,
+                    forwarded: null,
+                    viewOnce: false
+                });
+            }
         });
     }
         
@@ -2638,6 +2646,7 @@
     </body>
 
     </html>
+
 
 
 
