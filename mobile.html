@@ -1531,27 +1531,35 @@
     /* =========================================
         MESSAGING CORE
         ========================================= */
-    function openChat(pId, photo, name, grp = false) {
+      function openChat(pId, photo, name, grp = false) {
+        // 1. MATIKAN LISTENER CHAT LAMA (Hanya sekali)
         if (activeChatRef) {
             activeChatRef.off();
             console.log("Koneksi chat lama diputus.");
         }
+
+        // 2. MATIKAN RINGTONE
         const ringtone = document.getElementById('ringtoneSound');
         if(ringtone) {
             ringtone.pause();
             ringtone.currentTime = 0;
         }
 
-        if (activeChatRef) {
-            activeChatRef.off();
-        }
-
+        // 3. SET VARIABEL CHAT
         currentPartnerId = pId;
         isGroup = grp;
         currentChatId = grp ? pId : [currentUser, pId].sort().join("_");
         
+        // 4. RESET VARIABEL GLOBAL (PENTING!)
+        // Supaya saat pindah chat, flag "View Once" tidak ikut terbawa
+        viewOnceIgnoredKey = null;
+        selectedMsgId = null;
+        selectedMsgData = null;
+
+        // 5. SET REFERENCE LISTENER BARU
         activeChatRef = db.ref("chats/" + currentChatId).limitToLast(50);
 
+        // 6. SETUP UI CHAT
         document.getElementById("emojiPanel").style.display = "none";
         if (window.innerWidth <= 768) document.getElementById("sidebar").classList.add("hidden");
         document.getElementById("welcome-screen").style.display = "none";
@@ -1564,23 +1572,42 @@
 
         const msgsDiv = document.getElementById("msgs");
         msgsDiv.innerHTML = "";
-   
-        activeChatRef.on("child_changed", snap => {
-        const key = snap.key;
-        
-        // --- PERBAIKAN: JANGAN RENDER JIKA KITA SEDANG MELIHAT VIEW ONCE ---
-        if (key === viewOnceIgnoredKey) {
-            viewOnceIgnoredKey = null; // Reset flag
-            console.log("[VIEW ONCE] Menghindari auto-render delete.");
-            return; // JANGAN RENDER ULANG! (Tinggalkan gambar yang sudah dibuka tampil)
-        }
 
-        const oldMsg = document.getElementById("msg-wrap-" + key);
-        if(oldMsg) {
-            oldMsg.remove();
-            renderMessage(snap.val(), key);
-        }
-    });
+        // 7. LISTENER: PESAN BARU (child_added)
+        activeChatRef.on("child_added", snap => {
+            const m = snap.val();
+            if(!m) return;
+            renderMessage(m, snap.key);
+            msgsDiv.scrollTop = msgsDiv.scrollHeight;
+            
+            if (m.from !== currentUser && !m.seen) {
+                db.ref("chats/" + currentChatId + "/" + snap.key).update({ seen: true })
+                    .catch(e => console.log("Gagal update seen:", e));
+            }
+        });
+
+        // 8. LISTENER: PERUBAHAN PESAN (child_changed)
+        // Disini kita tempatkan logika "View Once" agar tidak auto-render delete
+        activeChatRef.on("child_changed", snap => {
+            const key = snap.key;
+            
+            // --- LOGIKA VIEW ONCE ---
+            // Jika perubahan terjadi pada pesan "Sekali Lihat" yang baru saja kita buka...
+            if (key === viewOnceIgnoredKey) {
+                viewOnceIgnoredKey = null; // Reset flag
+                console.log("[VIEW ONCE] Menghindari auto-render delete.");
+                return; // KELUAR (Jangan render ulang pesan deleted ini)
+            }
+
+            // Render ulang pesan biasa (misal: edit pesan, atau pesan lain)
+            const oldMsg = document.getElementById("msg-wrap-" + key);
+            if(oldMsg) {
+                oldMsg.remove();
+                renderMessage(snap.val(), key);
+            }
+        });
+
+        // 9. SETUP STATUS & TYPING
         const typingRef = db.ref(`typing/${currentChatId}`);
         watchTyping(currentChatId);
 
@@ -1596,7 +1623,6 @@
             });
         }
     }
-
     function startJitsi(type) {
         if (!currentChatId) {
             showToast("Buka chat dulu!");
@@ -2646,6 +2672,7 @@
     </body>
 
     </html>
+
 
 
 
