@@ -55,48 +55,64 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// --- 3. STRATEGI FETCH: Network First untuk Firebase, Cache First untuk yang lain ---
+// --- 3. FETCH EVENT (STRATEGI SPLIT) ---
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // --- PENTING: JANGAN CACHE DATABASE & API EKSTERNAL ---
-  // Firebase Database, Cloudinary, dan Jitsi harus selalu diambil dari Network 
-  // agar data chat selalu up-to-date.
+  // --- A. BYPASS CACHE (Network Only) ---
+  // Firebase, Cloudinary, Jitsi, Assets Mixkit TIDAK DICACHE
   if (url.hostname.includes('firebasedatabase.app') || 
       url.hostname.includes('cloudinary.com') ||
-      url.hostname.includes('jit.si')) {
+      url.hostname.includes('jit.si') ||
+      url.hostname.includes('mixkit.co')) {
     
-    // Cukup fetch saja, jangan cache (mencegah error clone)
-    event.respondWith(fetch(event.request));
+    // Kita fetch saja, dan jika gagal, return error as-is (tanpa mencoba cache)
+    // Tidak ada cache.put di sini, jadi TIDAK akan ada error 'clone'.
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        console.error('[SW] Network Error (No Cache):', event.request.url);
+        throw new Error('Network fetch failed');
+      })
+    );
     return;
   }
 
-  // --- STRATEGI STALE-WHILE-REVALIDATE UNTUK FILE HTML/CSS/JS/IMG ---
-  // 1. Cek Cache dulu (Cepat)
-  // 2. Ambil dari Network di background (Update)
+  // --- B. CACHE FIRST (Untuk Aset Statis: HTML, CSS, JS, IMG) ---
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      // Simpan request object di variabel agar bisa dipakai lagi
-      const requestToCache = event.request;
+      
+      // 1. Cek apakah sudah ada di cache
+      if (cachedResponse) {
+        return cachedResponse;
+      }
 
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
-        // Jika network sukses, simpan update ke cache
+      // 2. Jika tidak ada, ambil dari network
+      return fetch(event.request).then((networkResponse) => {
+        
+        // 3. Jika fetch sukses, simpan ke cache di background
+        // Kita lakukan ini secara terpisah dan aman
         if (networkResponse && networkResponse.status === 200) {
+          
+          // Kita clone SEKALIGA di sini, sebelum memasuki cache.open
+          const responseToCache = networkResponse.clone();
+          
           caches.open(CACHE_NAME).then((cache) => {
-            // --- PERBAIKAN: GUNAKAN requestToCache KETIMBAL networkResponse.clone() ---
-            cache.put(requestToCache, networkResponse.clone());
+            cache.put(event.request, responseToCache);
+          }).catch((err) => {
+            console.warn('[SW] Gagal cache:', err);
           });
         }
-        return networkResponse;
-      });
 
-      // Kembalikan cache yang ada dulu (jika ada), jika tidak ada tunggu network
-      return cachedResponse || fetchPromise;
+        // 4. Kembalikan network response ke user
+        return networkResponse;
+
+      }).catch((error) => {
+        console.error('[SW] Gagal fetch aset:', error);
+        throw error;
+      });
     })
   );
-});;
-
-
+});
 // --- 4. HANDLE MESSAGE (POSTMESSAGE DARI JS) ---
 self.addEventListener('message', (event) => {
   console.log('[SW v9] Pesan diterima dari client:', event.data);
@@ -170,6 +186,7 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+
 
 
 
