@@ -561,6 +561,70 @@
         .call-avatar { width: 120px; height: 120px; }
         .call-actions { bottom: 40px; }
     }
+        /* =========================================
+    MODAL PREVIEW GAMBAR (WA STYLE)
+    ========================================= */
+    #imgPreviewModal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0.95);
+        z-index: 5000;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(10px);
+    }
+
+    .preview-content {
+        width: 90%;
+        max-width: 400px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    #imgPreviewBox {
+        max-width: 100%;
+        max-height: 70vh;
+        border-radius: 15px;
+        object-fit: contain;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        border: 2px solid var(--glass-border);
+    }
+
+    .preview-actions {
+        display: flex;
+        gap: 20px;
+        justify-content: center;
+        width: 100%;
+    }
+
+    .btn-preview {
+        flex: 1;
+        padding: 15px;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: 0.2s;
+    }
+
+    .btn-preview.cancel {
+        background: #333;
+        color: white;
+    }
+
+    .btn-preview.send {
+        background: var(--accent);
+        color: black;
+    }
+    
+    .btn-preview:active {
+        transform: scale(0.95);
+    }
 
 
 </style>
@@ -743,6 +807,23 @@
         </button>
     </div>
 </div>
+            <!-- MODAL PREVIEW GAMBAR -->
+    <div id="imgPreviewModal">
+        <div class="preview-content">
+            <div style="font-size: 18px; font-weight: 600;">Lihat Gambar</div>
+            <!-- Container Gambar Preview -->
+            <img id="imgPreviewBox" src="" alt="Preview">
+            
+            <div class="preview-actions">
+                <button class="btn-preview cancel" onclick="cancelSendImage()">
+                    <i class="fas fa-times"></i> Batal
+                </button>
+                <button class="btn-preview send" onclick="confirmSendImage()">
+                    <i class="fas fa-paper-plane"></i> Kirim
+                </button>
+            </div>
+        </div>
+    </div>
         <script>
     /* =========================================
         CONFIG & INIT
@@ -802,6 +883,7 @@
     let audioContextUnlocked = false;
     let currentCallRoom = null;
     let currentCallType = null;
+    let pendingImageBase64 = null;
         
     // Cek Fokus
     window.addEventListener('focus', () => {
@@ -1742,74 +1824,6 @@
     /* =========================================
         SEND FUNCTIONS
         ========================================= */
-    async function send() {
-        const textInput = document.getElementById("text");
-        if (!textInput || !currentChatId) return; 
-        
-        const val = textInput.value.trim();
-
-        if (typeof vnBlob !== 'undefined' && vnBlob) {
-            showToast("Mengirim Voice Note...");
-            const reader = new FileReader();
-            reader.readAsDataURL(vnBlob);
-            reader.onloadend = function() {
-                const encryptedVN = "TYPE:VN:" + encryptData(reader.result);
-                const msgObj = {
-                    from: currentUser,
-                    text: encryptedVN,
-                    time: Date.now(),
-                    seenBy: { [currentUser]: true } 
-                };
-                
-                if (typeof replyData !== 'undefined' && replyData) msgObj.replyTo = replyData;
-                
-                db.ref("chats/" + currentChatId).push(msgObj);
-                updateSummary("🎵 Voice Note");
-                
-                vnBlob = null;
-                textInput.value = "";
-                textInput.readOnly = false;
-                cancelReply();
-            };
-            return;
-        }
-
-        if (typeof isEditing !== 'undefined' && isEditing) {
-            if (!val) return;
-            db.ref(`chats/${currentChatId}/${selectedMsgId}`).update({
-                text: encryptData(val),
-                edited: true
-            }).then(() => {
-                isEditing = false;
-                textInput.value = "";
-                showToast("Pesan diperbarui");
-            });
-        } 
-        
-        else {
-            if (!val) return;
-            const msgObj = {
-                from: currentUser,
-                text: encryptData(val),
-                time: Date.now(),
-                seenBy: { [currentUser]: true } 
-            };
-            
-            msgObj.seen = false;
-            
-            if (typeof replyData !== 'undefined' && replyData) {
-                msgObj.replyTo = replyData;
-            }
-            
-            db.ref("chats/" + currentChatId).push(msgObj).then(() => {
-                textInput.value = "";
-                updateSummary(val);
-                cancelReply(); 
-            });
-        }
-
-        db.ref(`typing/${currentChatId}/${currentUser}`).remove();
-    }
 
     function openContextMenu(e, key, data) {
         if(data.deleted) return;
@@ -1926,26 +1940,148 @@
         document.getElementById("text").focus();
         showToast("Mode Edit Aktif");
     }
-
+    // 1. GANTI FUNGSI sendImage
     async function sendImage(input) {
         if(!input.files[0]) return;
-        showToast("Mengompres Gambar...");
+        console.log("Gambar dipilih. Mengompres...");
+        
         const reader = new FileReader();
         reader.readAsDataURL(input.files[0]);
         reader.onload = function(e) {
             const img = new Image();
             img.src = e.target.result;
             img.onload = function() {
+                // Kompresi Gambar ke Canvas
                 const canvas = document.createElement('canvas');
                 const MAX_WIDTH = 800;
                 const scale = MAX_WIDTH / img.width;
                 canvas.width = MAX_WIDTH;
                 canvas.height = img.height * scale;
                 canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                pushMsg("IMG:" + encryptData(canvas.toDataURL('image/jpeg', 0.7)));
-                updateSummary("📷 Gambar");
+                
+                // SIMPAN KE VARIABEL TEMPORER
+                pendingImageBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                
+                // TAMPILKAN MODAL PREVIEW
+                showImagePreview(pendingImageBase64);
             };
         };
+    }
+
+    // 2. TAMBAHKAN 3 FUNGSI BARU INI
+    function showImagePreview(base64String) {
+        const modal = document.getElementById("imgPreviewModal");
+        const imgBox = document.getElementById("imgPreviewBox");
+        
+        imgBox.src = base64String;
+        modal.style.display = "flex";
+    }
+
+    function cancelSendImage() {
+        // Bersihkan pending image
+        pendingImageBase64 = null;
+        
+        // Tutup Modal
+        document.getElementById("imgPreviewModal").style.display = "none";
+        
+        // Reset Input File
+        document.getElementById("imgInput").value = "";
+        
+        console.log("Preview dibatalkan.");
+    }
+
+    function confirmSendImage() {
+        if (!pendingImageBase64) return;
+        
+        // Kirim Gambar
+        pushMsg("IMG:" + encryptData(pendingImageBase64));
+        updateSummary("📷 Gambar");
+        
+        // Bersihkan
+        pendingImageBase64 = null;
+        document.getElementById("imgPreviewModal").style.display = "none";
+        document.getElementById("imgInput").value = "";
+        
+        showToast("Gambar terkirim!");
+    }
+
+    // 3. UPDATE FUNGSI send()
+    // Kita tambahkan cek apakah ada 'pendingImageBase64' atau 'vnBlob'
+    async function send() {
+        const textInput = document.getElementById("text");
+        if (!textInput || !currentChatId) return; 
+        
+        // CEK 1: Jika ada gambar pending (Dari fitur Preview)
+        if (pendingImageBase64) {
+            confirmSendImage(); // Kirim gambar
+            return;
+        }
+
+        // CEK 2: Jika ada Voice Note (Fitur VN lama)
+        const val = textInput.value.trim();
+
+        if (typeof vnBlob !== 'undefined' && vnBlob) {
+            showToast("Mengirim Voice Note...");
+            const reader = new FileReader();
+            reader.readAsDataURL(vnBlob);
+            reader.onloadend = function() {
+                const encryptedVN = "TYPE:VN:" + encryptData(reader.result);
+                const msgObj = {
+                    from: currentUser,
+                    text: encryptedVN,
+                    time: Date.now(),
+                    seenBy: { [currentUser]: true } 
+                };
+                
+                if (typeof replyData !== 'undefined' && replyData) msgObj.replyTo = replyData;
+                
+                db.ref("chats/" + currentChatId).push(msgObj);
+                updateSummary("🎵 Voice Note");
+                
+                vnBlob = null;
+                textInput.value = "";
+                textInput.readOnly = false;
+                cancelReply();
+            };
+            return;
+        }
+
+        // LOGIKA PESAN TEKS (Edit / Baru) SAMA SEPERTI SEBELUMNYA
+        if (typeof isEditing !== 'undefined' && isEditing) {
+            if (!val) return;
+            db.ref(`chats/${currentChatId}/${selectedMsgId}`).update({
+                text: encryptData(val),
+                edited: true
+            }).then(() => {
+                isEditing = false;
+                textInput.value = "";
+                showToast("Pesan diperbarui");
+            });
+        } 
+        
+        else {
+            if (!val) return;
+            const msgObj = {
+                from: currentUser,
+                text: encryptData(val),
+                time: Date.now(),
+                seenBy: { [currentUser]: true } 
+            };
+            
+            msgObj.seen = false;
+            
+            if (typeof replyData !== 'undefined' && replyData) {
+                msgObj.replyTo = replyData;
+            }
+            
+            db.ref("chats/" + currentChatId).push(msgObj).then(() => {
+                textInput.value = "";
+                updateSummary(val);
+                cancelReply(); 
+            });
+        }
+
+        db.ref(`typing/${currentChatId}/${currentUser}`).remove();
     }
 
     /* =========================================
@@ -2352,6 +2488,7 @@
     </body>
 
     </html>
+
 
 
 
