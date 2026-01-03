@@ -1154,7 +1154,7 @@
     /* =========================================
         CONTACTS & LIST
         ========================================= */
-    function loadContacts() {
+        function loadContacts() {
         console.log("[LOAD] Memuat contacts...");
         
         // 1. MATIKAN LISTENER LAMA
@@ -1162,15 +1162,12 @@
             db.ref(`user_chats/${currentUser}`).off('value', contactsListener);
         }
 
-        // Matikan listeners spesifik
         for (const id in chatListeners) {
             if (chatListeners[id].badge) {
                 chatListeners[id].badge.off();
-                console.log("[LOAD] Matikan badge:", id);
             }
             if (chatListeners[id].notif) {
                 chatListeners[id].notif.off();
-                console.log("[LOAD] Matikan notif:", id);
             }
         }
         chatListeners = {};
@@ -1183,32 +1180,58 @@
             const pinnedIds = pinnedSnap.val() || {};
             const list = document.getElementById("users");
             
-            // HAPUS SEMUA VISUAL DULU
+            // HAPUS SEMUA VISUAL
             list.innerHTML = ""; 
 
-            let items = []; // Array untuk menyimpan data yang akan di-sort
-            const promises = []; // Array untuk menyimpan Promise data user
+            let items = []; // Array data
+            const promises = []; // Array Promise fetch user
             let activeIds = [];
 
-            // 3. LOOP & KUMPULKAN DATA USER
+            // 3. LOOP & FETCH USER
             snap.forEach(c => { 
                 const id = c.key;
                 const info = c.val();
                 if(!info) return;
                 activeIds.push(id);
 
-                // Buat Promise untuk setiap User ID (Supaya paralel & cepat)
                 const p = new Promise((resolve) => {
                     const isGrp = id.startsWith("GROUP_");
+                    const isPinned = !!pinnedIds[id]; // Cek status pin
                     const refPath = isGrp ? "groups/" + id : "users/" + id;
+                    const chatId = isGrp ? id : [currentUser, id].sort().join("_");
                     
                     db.ref(refPath).once("value", uSnap => {
                         const u = uSnap.val();
-                        const isPinned = !!pinnedIds[id];
-                        const chatId = isGrp ? id : [currentUser, id].sort().join("_");
+                        
+                        // Elemen DOM akan dibuat baru karena list.innerHTML = ""
+                        let div = document.createElement("div");
+                        div.id = `contact-${id}`; 
+                        div.className = `user ${isPinned ? 'pinned' : ''}`;
+                        
+                        // Set CSS Order (Di sini, bukan di append nanti)
+                        // Kita set sementara 999 (paling bawah), nanti diupdate di loop bawah
+                        div.style.order = 999; 
+
+                        div.onclick = (e) => {
+                            if (e.target.tagName !== 'IMG') { 
+                                openChat(id, u?.photo || '', u?.name || u?.username || id, isGrp);
+                            }
+                        };
+                        
+                        div.innerHTML = `
+                            <img src="${u?.photo || (isGrp ? 'https://cdn-icons-png.flaticon.com/512/615/615075.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}" 
+                                 onclick="event.stopPropagation(); goToTargetProfile('${id}', ${isGrp})"
+                                 style="width:52px; height:52px; border-radius:16px; object-fit:cover;">
+                            <div class="user-info">
+                                <b>${u?.name || u?.username || id} ${isPinned ? '📌' : ''}</b>
+                                <span>${info.lastMsg || '...'}</span>
+                            </div>
+                        `;
+                        setupHoldListener(div, id);
 
                         resolve({
-                            id: id,
+                            id: id, 
+                            el: div,
                             info: info,
                             isPinned: isPinned,
                             isGrp: isGrp,
@@ -1220,21 +1243,38 @@
                 promises.push(p);
             });
 
-            // 4. TUNGGU SEMUA DATA SELESAI (KUNCI PERBAIKAN)
-            // Jika ini tidak ada, 'results' akan kosong dan sorting gagal
+            // 4. TUNGGU SELESAI
             const results = await Promise.all(promises);
 
-            // 5. PROSES DATA & UPDATE UI (LOOP HASIL PROMISES)
-            results.forEach(item => {
-                const { id, info, isPinned, isGrp, u, chatId } = item;
-                
-                // --- INIT LISTENER (BAIK UNTUK BARU MAUPUN UPDATE) ---
-                if (!chatListeners[id]) {
-                    // Pindahkan logika initContactListener ke sini
-                    chatListeners[id] = { badge: null, notif: null };
-                }
+            // 5. SORTING (LOGIKA URUTAN)
+            // Pindahkan Pinned ke awal array
+            results.sort((a, b) => {
+                if (a.isPinned && !b.isPinned) return -1; // A Pindah ke atas (Index kecil)
+                if (!a.isPinned && b.isPinned) return 1;  // B Pindah ke atas
+                return b.info.time - a.info.time; // Terbaru dulu
+            });
 
-                // --- SETUP BADGE LISTENER ---
+            // 6. APPEND DAN SET ORDER VISUAL
+            results.forEach((item, index) => {
+                // PENTING: Update CSS Order disini
+                // Index 0 = Paling Atas, Index Terakhir = Paling Bawah
+                item.el.style.order = index; 
+                
+                list.appendChild(item.el);
+            });
+
+            // 7. SETUP LISTENER (BADGE & NOTIF) (Disini kita logic ulang agar bersih)
+            results.forEach(item => {
+                const id = item.id;
+                const u = item.u;
+                const isPinned = item.isPinned;
+                const isGrp = item.isGrp;
+                const chatId = item.chatId;
+
+                // Init Listener jika belum ada
+                if (!chatListeners[id]) chatListeners[id] = { badge: null, notif: null };
+
+                // Badge Listener
                 if (!chatListeners[id].badge) {
                     const unreadRef = db.ref("chats/" + chatId).limitToLast(50).orderByChild("seen").equalTo(false);
                     const badgeHandler = (unreadSnap) => {
@@ -1262,8 +1302,8 @@
                     unreadRef.on("value", badgeHandler);
                     chatListeners[id].badge = unreadRef; 
                 }
-                
-                // --- SETUP NOTIFIKASI LISTENER ---
+
+                // Notif Listener
                 if (!chatListeners[id].notif) {
                     const notifRef = db.ref("chats/" + chatId).limitToLast(20);
                     const notifHandler = (msgSnap) => {
@@ -1304,94 +1344,14 @@
                     notifRef.on("child_added", notifHandler);
                     chatListeners[id].notif = notifRef;
                 }
-
-                // --- UPDATE / CREATE DOM ---
-                const el = document.getElementById(`contact-${id}`);
-                
-                if (el) {
-                    // UPDATE
-                    if (isPinned && !el.classList.contains('pinned')) el.classList.add('pinned');
-                    if (!isPinned && el.classList.contains('pinned')) el.classList.remove('pinned');
-                    const nameEl = el.querySelector("b");
-                    const msgEl = el.querySelector("span");
-                    if(nameEl) nameEl.innerText = `${u?.name || u?.username || id} ${isPinned ? '📌' : ''}`;
-                    if(msgEl) msgEl.innerText = info.lastMsg || '...';
-                } else {
-                    // CREATE
-                    let div = document.createElement("div");
-                    div.id = `contact-${id}`; 
-                    div.className = `user ${isPinned ? 'pinned' : ''}`;
-                    div.onclick = (e) => {
-                        if (e.target.tagName !== 'IMG') { 
-                            openChat(id, u?.photo || '', u?.name || u?.username || id, isGrp);
-                        }
-                    };
-                    
-                    div.innerHTML = `
-                        <img src="${u?.photo || (isGrp ? 'https://cdn-icons-png.flaticon.com/512/615/615075.png' : 'https://cdn-icons-png.flaticon.com/512/149/149071.png')}" 
-                             onclick="event.stopPropagation(); goToTargetProfile('${id}', ${isGrp})"
-                             style="width:52px; height:52px; border-radius:16px; object-fit:cover;">
-                        <div class="user-info">
-                            <b>${u?.name || u?.username || id} ${isPinned ? '📌' : ''}</b>
-                            <span>${info.lastMsg || '...'}</span>
-                        </div>
-                    `;
-                    setupHoldListener(div, id);
-                }
-
-                // Push ke array items untuk sorting
-                items.push({ 
-                    id: id, 
-                    el: el || document.getElementById(`contact-${id}`), // Ambil elemen DOM
-                    info: info,
-                    isPinned: isPinned,
-                    isGrp: isGrp,
-                    u: u,
-                    chatId: chatId
-                });
             });
 
-            // 6. HAPUS KONTAK TIDAK AKTIF
-            const existingDivs = document.querySelectorAll('.user');
-            existingDivs.forEach(div => {
-                const divId = div.id.replace('contact-', '');
-                if (!activeIds.includes(divId)) {
-                    if (chatListeners[divId]) {
-                        if (chatListeners[divId].badge) {
-                            chatListeners[divId].badge.off();
-                            chatListeners[divId].badge = null;
-                        }
-                        if (chatListeners[divId].notif) {
-                            chatListeners[divId].notif.off();
-                            chatListeners[divId].notif = null;
-                        }
-                        delete chatListeners[divId];
-                    }
-                    div.remove();
-                }
-            });
+            // 8. REFLOW TRIGGER (PAKSA BROWSER GAMBAR ULANG)
+            // Ini penting untuk iOS agar visual order berubah
+            void list.offsetHeight; 
 
-            // 7. SORTING (PENTING: JALANKAN SETELAH PROMISE ALL SELESAI)
-            items.sort((a, b) => {
-                if (a.isPinned && !b.isPinned) return -1; // Pinned di atas
-                if (!a.isPinned && b.isPinned) return 1;
-                return b.info.time - a.info.time;
-            });
-
-            // DEBUG: Cek urutan sortir di console
-            console.log("[LOAD] Urutan Sortir:", items.map(i => i.id + (i.isPinned ? ' [PIN]' : '')));
-
-            // 8. APPEND KE LAYAR (MENGIKUT URUTAN SORTIR + CSS ORDER)
-            items.forEach((item, index) => {
-                // PAKSA CSS ORDER (PENTING UNTUK iOS & CROSS-BROWSER)
-                item.el.style.order = index; // <--- BARIS INI YANG MEMAKSA VISUAL PIN KE ATAS
-                
-                // Append ke layar. Flexbox akan mengikuti style.order.
-                list.appendChild(item.el); 
-            });
+            contactsListener = newListener;
         });
-
-        contactsListener = newListener;
     }
     /* =========================================
         CALL OVERLAY FUNCTIONS
@@ -2453,6 +2413,7 @@
     </body>
 
     </html>
+
 
 
 
