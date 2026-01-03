@@ -55,17 +55,44 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// --- 3. FETCH ---
+// --- 3. STRATEGI FETCH: Network First untuk Firebase, Cache First untuk yang lain ---
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Bypass cache untuk Firebase, Cloudinary, Jitsi
+  // --- PENTING: JANGAN CACHE DATABASE, API, & AUDIO EKSTERNAL ---
+  // Firebase Database, Cloudinary, Jitsi, dan Assets Mixkit harus selalu ambil dari Network.
+  // Kita tidak me-cache audio MP3 karena file-nya kecil & tidak support offline PWA standar.
   if (url.hostname.includes('firebasedatabase.app') || 
       url.hostname.includes('cloudinary.com') ||
-      url.hostname.includes('jit.si')) {
+      url.hostname.includes('jit.si') ||
+      url.hostname.includes('assets.mixkit.co')) { // <--- TAMBAHKAN BIKANAN INI
+    
+    // Cukup kembalikan request ke network saja, jangan cache
     event.respondWith(fetch(event.request));
     return;
   }
+
+  // --- STRATEGI STALE-WHILE-REVALIDATE UNTUK FILE HTML/CSS/JS/IMG ---
+  // 1. Cek Cache dulu (Cepat)
+  // 2. Ambil dari Network di background (Update)
+  event.respondWith(
+    caches.match(event.request).then((cachedResponse) => {
+      // Ambil data dari network
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        // Jika network sukses, simpan update ke cache
+        if (networkResponse && networkResponse.status === 200) {
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, networkResponse.clone());
+          });
+        }
+        return networkResponse;
+      });
+
+      // Kembalikan cache yang ada dulu (jika ada), jika tidak ada tunggu network
+      return cachedResponse || fetchPromise;
+    })
+  );
+});
 
   // Cache First untuk Assets Statis
   event.respondWith(
@@ -157,3 +184,4 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+
