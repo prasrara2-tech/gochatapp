@@ -753,7 +753,7 @@
         </button>
     </div>
 </div>
-    <script>
+        <script>
     /* =========================================
         CONFIG & INIT
         ========================================= */
@@ -770,6 +770,8 @@
     const db = firebase.database();
     const currentUser = localStorage.getItem("gochat_user");
     const SECRET_KEY = "Global_Key_123";
+    
+    // DOM Elements
     const contextMenu = document.getElementById('contextMenu');
     const menuOverlay = document.getElementById('menuOverlay');
     const micBtn = document.getElementById("micButton");
@@ -778,6 +780,7 @@
     const textInput = document.getElementById("text");
     const normalInput = document.querySelector(".input-area");
 
+    // Global Variables
     let currentChatId = null;
     let activeChatRef = null; 
     let currentPartnerId = null;
@@ -815,12 +818,12 @@
         isWindowFocused = true;
     });
 
-    // Cek Blur (Saat klik tab lain / minimize)
+    // Cek Blur
     window.addEventListener('blur', () => {
         isWindowFocused = false;
     });
 
-    // --- FUNGSI BARU: REQUEST PERMISSION MANUAL ---
+    // --- FUNGSI REQUEST PERMISSION MANUAL ---
     async function requestNotificationPermission() {
         if (!("Notification" in window)) {
             alert("Browser ini tidak mendukung notifikasi desktop");
@@ -831,7 +834,6 @@
         if (permission === "granted") {
             showToast("Notifikasi Diaktifkan!");
             document.getElementById("btnEnableNotif").style.display = "none";
-            // Coba Service Worker
             registerServiceWorker();
         } else {
             showToast("Notifikasi Ditolak");
@@ -843,9 +845,10 @@
             try {
                 const registration = await navigator.serviceWorker.register('sw.js');
                 console.log('Service Worker terdaftar!', registration);
-                // Subscribe ke FCM (Opsional jika sudah setup FCM di console Firebase)
-                // const messaging = firebase.messaging();
-                // messaging.getToken({ vapidKey: "YOUR_VAPID_KEY" })... 
+                // Force update jika ada versi baru
+                if (registration.waiting) {
+                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
             } catch (err) {
                 console.error('Gagal registrasi SW:', err);
             }
@@ -856,35 +859,40 @@
         if(!currentUser) { window.location.href="index.html"; return; }
         
         console.log("🚀 [INIT] Starting App...");
-        chatListeners = {}; 
-        // --- 1. REQUEST NOTIFICATION PERMISSION FIRST ---
+        
+        // 1. REQUEST NOTIFICATION PERMISSION
         if ("Notification" in window && Notification.permission === "default") {
             try {
                 const permission = await Notification.requestPermission();
                 if (permission === "granted") {
                     registerServiceWorker();
                 } else {
-                    document.getElementById("btnEnableNotif").style.display = "block";
+                    const btn = document.getElementById("btnEnableNotif");
+                    if(btn) btn.style.display = "block";
                 }
             } catch (e) {
                 console.warn("Permintaan notifikasi otomatis diblokir.", e);
-                document.getElementById("btnEnableNotif").style.display = "block";
+                const btn = document.getElementById("btnEnableNotif");
+                if(btn) btn.style.display = "block";
             }
         } else if (Notification.permission === "granted") {
             registerServiceWorker();
         } else if (Notification.permission === "denied") {
-            document.getElementById("btnEnableNotif").style.display = "block";
+            const btn = document.getElementById("btnEnableNotif");
+            if(btn) btn.style.display = "block";
         }
         
-        // --- 2. UNLOCK AUDIO ---
+        // 2. UNLOCK AUDIO
         unlockAudioContext();
         
-        // --- 3. SETUP USER ---
+        // 3. SETUP USER
         db.ref("users/" + currentUser).on("value", s => {
             const d = s.val();
             if(d) {
-                document.getElementById("myName").innerText = d.username;
-                document.getElementById("myPhotos").src = d.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+                const nameEl = document.getElementById("myName");
+                const photoEl = document.getElementById("myPhotos");
+                if(nameEl) nameEl.innerText = d.username;
+                if(photoEl) photoEl.src = d.photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
                 db.ref("users/" + currentUser).update({ online: true, lastSeen: Date.now() });
             }
         });
@@ -892,7 +900,7 @@
         db.ref("users/" + currentUser + "/online").onDisconnect().set(false);
         db.ref("users/" + currentUser + "/lastSeen").onDisconnect().set(Date.now());
 
-        // --- 4. LOAD CONTACTS & SETUP ---
+        // 4. LOAD CONTACTS & SETUP
         loadContacts();
         setupEmoji();
         setupTypingListener();
@@ -1076,7 +1084,7 @@
         NOTIFICATION LOGIC (SPLIT CATEGORIES)
         ========================================= */
     
-       function showBrowserNotification(title, body, icon, tag) {
+    function showBrowserNotification(title, body, icon, tag) {
         // --- GAMBAR HITAM 1x1 PIXEL (DATA URI) ---
         // Hack agar background notifikasi jadi hitam (Dark Mode)
         const blackPixel = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
@@ -1137,7 +1145,7 @@
     /* =========================================
         CONTACTS & LIST
         ========================================= */
-        function loadContacts() {
+    function loadContacts() {
         // 1. MATIKAN SEMUA LISTENER YANG ADA
         // Ini mencegah "tumpukan" listener yang membuat koneksi putus
         if (contactsListener) {
@@ -1263,12 +1271,15 @@
                             // --- CEK 4: Pesan Baru (15 detik terakhir) ---
                             // HANYA notif jika pesan baru saja masuk. Ini mencegah notif spam saat refresh.
                             const isRecent = (Date.now() - m.time) < 20000; 
-                            if (!isRecent) return;
+                            if (!isRecent) {
+                                console.log(`[NOTIF SKIP] Pesan terlalu lama (${chatId})`);
+                                return; 
+                            }
 
                             // --- CEK 5: Saya SEDANG MEMBUKA CHAT INI? ---
                             // Jika ya, jangan notif.
                             if (currentChatId === chatId) {
-                                console.log(`[NOTIF] Chat aktif, dibatalkan: ${chatId}`);
+                                console.log(`[NOTIF SKIP] Chat aktif, dibatalkan: ${chatId}`);
                                 return; 
                             }
 
@@ -1297,8 +1308,6 @@
                                     : "https://cdn-icons-png.flaticon.com/512/3033/3033141.png"; 
                                 notifTag = `call_${callType}_${chatId}`; 
                                 soundType = 'ringtone';
-                                
-                                // Panggil Overlay
                                 showCallOverlay(roomName, callType, notifTitle, u?.photo);
 
                             } else if (m.text.startsWith("IMG:")) {
@@ -1368,7 +1377,10 @@
         contactsListener = newListener;
     }
 
-     function showCallOverlay(roomName, type, name, photoUrl) {
+    /* =========================================
+        CALL OVERLAY FUNCTIONS
+        ========================================= */
+    function showCallOverlay(roomName, type, name, photoUrl) {
         const overlay = document.getElementById("call-overlay");
         const avatar = document.getElementById("call-overlay-avatar");
         const nameEl = document.getElementById("call-overlay-name");
@@ -2403,6 +2415,7 @@
     </body>
 
     </html>
+
 
 
 
