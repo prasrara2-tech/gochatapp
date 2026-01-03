@@ -16,6 +16,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script> <!-- Tambahkan Messaging -->
     <script src="https://meet.jit.si/external_api.js"></script>
   
    
@@ -463,7 +464,6 @@
     <div id="toast"></div>
 
     <audio id="notificationSound" src="https://assets.mixkit.co/sfx/preview/mixkit-software-interface-start-2574.mp3" preload="auto"></audio>
-
     <audio id="ringtoneSound" src="https://assets.mixkit.co/sfx/preview/mixkit-phone-ring-traditional-953.mp3" preload="auto" loop></audio>
 
     <div class="app">
@@ -619,7 +619,8 @@
         databaseURL: "https://gochat-35172-default-rtdb.asia-southeast1.firebasedatabase.app",
         projectId: "gochat-35172",
         storageBucket: "gochat-35172.appspot.com",
-        appId: "1:206571646434:web:4036d43695a00474499dbb"
+        appId: "1:206571646434:web:4036d43695a00474499dbb",
+        messagingSenderId: "206571646434"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
@@ -654,12 +655,12 @@
     let recordInterval;
     let localStream = null;
     let jitsiApi = null;
-    let globalNotifListener = null; // <--- WAJIB DI SINI!
+    let globalNotifListener = null; 
     let chatListeners = {};
     let lastProcessedMsgKey = null;
     let isWindowFocused = document.hasFocus();
     let isNotificationSetupDone = false;
-    let contactsListener = null; // <--- TAMBAHKAN INI! AGAR ERROR HILANG
+    let contactsListener = null; 
     let unreadListeners = {}; 
     let audioContextUnlocked = false;
         
@@ -684,8 +685,24 @@
         if (permission === "granted") {
             showToast("Notifikasi Diaktifkan!");
             document.getElementById("btnEnableNotif").style.display = "none";
+            // Coba Service Worker
+            registerServiceWorker();
         } else {
             showToast("Notifikasi Ditolak");
+        }
+    }
+
+    async function registerServiceWorker() {
+        if ('serviceWorker' in navigator) {
+            try {
+                const registration = await navigator.serviceWorker.register('sw.js');
+                console.log('Service Worker terdaftar!', registration);
+                // Subscribe ke FCM (Opsional jika sudah setup FCM di console Firebase)
+                // const messaging = firebase.messaging();
+                // messaging.getToken({ vapidKey: "YOUR_VAPID_KEY" })... 
+            } catch (err) {
+                console.error('Gagal registrasi SW:', err);
+            }
         }
     }
 
@@ -695,36 +712,28 @@
         console.log("🚀 [INIT] Starting App...");
         
         // --- 1. REQUEST NOTIFICATION PERMISSION FIRST ---
-        // Browser modern memblokir request permission jika tidak dipicu oleh user gesture (klik).
-        // Kita coba, jika gagal, kita tampilkan tombol manual.
         if ("Notification" in window && Notification.permission === "default") {
-            console.log("📢 [INIT] Requesting notification permission...");
             try {
                 const permission = await Notification.requestPermission();
-                if (permission !== "granted") {
+                if (permission === "granted") {
+                    registerServiceWorker();
+                } else {
                     document.getElementById("btnEnableNotif").style.display = "block";
                 }
             } catch (e) {
-                console.warn("Permintaan notifikasi otomatis diblokir browser. Gunakan tombol manual.", e);
+                console.warn("Permintaan notifikasi otomatis diblokir.", e);
                 document.getElementById("btnEnableNotif").style.display = "block";
             }
+        } else if (Notification.permission === "granted") {
+            registerServiceWorker();
         } else if (Notification.permission === "denied") {
             document.getElementById("btnEnableNotif").style.display = "block";
-        } else {
-            console.log("📢 [INIT] Current permission:", Notification.permission);
         }
         
-        // --- 2. UNLOCK AUDIO IMMEDIATELY ---
+        // --- 2. UNLOCK AUDIO ---
         unlockAudioContext();
         
-        // --- 3. SERVICE WORKER ---
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js')
-                .then(reg => console.log('Service Worker terdaftar!', reg))
-                .catch(err => console.error('Gagal registrasi SW:', err));
-        }
-        
-        // --- 4. SETUP USER ---
+        // --- 3. SETUP USER ---
         db.ref("users/" + currentUser).on("value", s => {
             const d = s.val();
             if(d) {
@@ -737,15 +746,16 @@
         db.ref("users/" + currentUser + "/online").onDisconnect().set(false);
         db.ref("users/" + currentUser + "/lastSeen").onDisconnect().set(Date.now());
 
-        // --- 5. LOAD CONTACTS & SETUP ---
+        // --- 4. LOAD CONTACTS & SETUP ---
         loadContacts();
         setupEmoji();
         setupTypingListener();
         
         console.log("✅ [INIT] App initialization complete");
     }
+
     /* =========================================
-        FUNGSI GROUP (SUDAH DIPERBAIKI - TIDAK GANDA)
+        FUNGSI GROUP
         ========================================= */
     function openCreateGroup() { 
         document.getElementById("createGroupModal").style.display = "flex"; 
@@ -786,7 +796,7 @@
     }
 
     /* =========================================
-        FUNGSI ADD FRIEND (SUDAH DIPERBAIKI - TIDAK GANDA)
+        FUNGSI ADD FRIEND
         ========================================= */
     function openAddFriend() { 
         document.getElementById("addFriendModal").style.display = "flex"; 
@@ -819,7 +829,7 @@
                     time: Date.now() 
                 });
 
-                // 2. TAMBAHKAN KE DAFTAR CHAT TEMAN (Agar muncul di sidebar dia) <-- INI YANG HILANG
+                // 2. TAMBAHKAN KE DAFTAR CHAT TEMAN (Agar muncul di sidebar dia)
                 db.ref(`user_chats/${id}/${currentUser}`).update({ 
                     lastMsg: "Permintaan pertemanan baru", 
                     time: Date.now() 
@@ -833,6 +843,7 @@
             }
         });
     }
+
     /* =========================================
         TYPING STATUS LOGIC
         ========================================= */
@@ -897,6 +908,7 @@
             st.style.color = u?.online ? "var(--online)" : "var(--text-muted)";
         });
     }
+
     function unlockAudioContext() {
         if (audioContextUnlocked) return;
         const audio = document.getElementById('notificationSound');
@@ -913,18 +925,62 @@
     // Aktifkan saat user klik/touch layar
     document.addEventListener('click', unlockAudioContext, { once: true });
     document.addEventListener('touchstart', unlockAudioContext, { once: true });
+
     /* =========================================
-        CONTACTS & LIST (FIXED NOTIFICATION LOGIC)
+        NOTIFICATION LOGIC (SPLIT CATEGORIES)
+        ========================================= */
+    
+    function showBrowserNotification(title, body, icon, tag, onClickUrl) {
+        // --- 1. SERVICE WORKER PUSH (BEST FOR BACKGROUND) ---
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+            const dataPayload = {
+                title: title,
+                body: body,
+                icon: icon,
+                badge: icon,
+                tag: tag, // TAG PENTING untuk memisahkan kategori
+                url: onClickUrl
+            };
+
+            navigator.serviceWorker.controller.postMessage({
+                type: 'NOTIFICATION',
+                data: dataPayload
+            });
+        } 
+        // --- 2. FALLBACK: NATIVE NOTIFICATION (Jika SW gagal/offline) ---
+        else if (Notification.permission === "granted") {
+            const options = {
+                body: body,
+                icon: icon,
+                badge: icon,
+                vibrate: [200, 100, 200],
+                tag: tag,
+                requireInteraction: true
+            };
+            
+            try {
+                const notif = new Notification(title, options);
+                notif.onclick = () => {
+                    window.focus();
+                    // Logic open chat bisa ditambahkan disini sederhana
+                    window.location.href = onClickUrl || "#"; 
+                    notif.close();
+                };
+            } catch (e) {
+                console.error("Gagal show native notif", e);
+            }
+        }
+    }
+
+    /* =========================================
+        CONTACTS & LIST
         ========================================= */
     function loadContacts() {
-        // 1. Matikan listener lama
         if (contactsListener) {
             db.ref(`user_chats/${currentUser}`).off('value', contactsListener);
         }
 
         contactsListener = db.ref(`user_chats/${currentUser}`).on("value", async (snap) => {
-            
-            // Ambil data Pinned
             const pinnedSnap = await db.ref(`user_settings/${currentUser}/pinned_chats`).once("value");
             const pinnedIds = pinnedSnap.val() || {};
             const list = document.getElementById("users");
@@ -947,7 +1003,6 @@
                     const chatId = isGrp ? id : [currentUser, id].sort().join("_");
 
                     if (el) {
-                        // UPDATE
                         if (isPinned && !el.classList.contains('pinned')) el.classList.add('pinned');
                         if (!isPinned && el.classList.contains('pinned')) el.classList.remove('pinned');
 
@@ -958,7 +1013,6 @@
                         if(msgEl) msgEl.innerText = info.lastMsg || '...';
 
                     } else {
-                        // CREATE
                         let div = document.createElement("div");
                         div.id = `contact-${id}`; 
                         div.className = `user ${isPinned ? 'pinned' : ''}`;
@@ -981,7 +1035,6 @@
                         // 1. Listener Badge
                         if (!chatListeners[id].badge) {
                             const unreadRef = db.ref("chats/" + chatId).limitToLast(50).orderByChild("seen").equalTo(false);
-                            
                             const badgeHandler = (unreadSnap) => {
                                 let count = 0;
                                 unreadSnap.forEach(child => { 
@@ -1005,64 +1058,59 @@
                                     }
                                 }
                             };
-                            
                             unreadRef.on("value", badgeHandler);
                             chatListeners[id].badge = unreadRef; 
                         }
 
-                        // 2. Listener Notifikasi (FIX DISINI - PISAH DARI BADGE)
+                        // 2. Listener Notifikasi (DIPISAH KATEGORINYA)
                         if (!chatListeners[id].notif) {
-                            // Kita pakai 'child_added' untuk mendeteksi pesan masuk secara *real-time*
                             const notifRef = db.ref("chats/" + chatId).limitToLast(1);
                             
                             const notifHandler = (msgSnap) => {
-                                // msgSnap adalah DataSnapshot dari event child_added
                                 const m = msgSnap.val();
                                 
-                                // --- FIX KRUSIAL: CEK DATA VALID ---
                                 if (!m || !m.text) return;
-
-                                // --- FIX: CEK PENGIRIM ---
-                                // Jangan notif jika pesan dari saya sendiri
                                 if (m.from === currentUser) return;
-
-                                // Jangan notif jika saya sedang membuka chat tersebut
                                 if (currentChatId === chatId) return;
-                                
-                                // Jangan notif jika pesan sudah dihapus
                                 if (m.deleted) return;
 
-                                // --- LOGIKA NOTIFIKASI ---
+                                // --- LOGIKA KATEGORI ---
+                                let notifTitle = isGrp ? (u?.name || "Grup") : (u?.username || "Teman");
                                 let notifBody = "";
+                                let notifIcon = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; // Default
+                                let notifTag = `chat_${chatId}`; // Default Tag
                                 let soundType = 'message';
 
-                                // Cek Tipe Pesan
-                                if (m.text.startsWith("CALL_JITSI:")) {
-                                    soundType = 'ringtone'; 
-                                    notifBody = "📞 Panggilan Masuk...";
+                                // Cek Prefix
+                                if (m.text.startsWith("CALL_JITSI:audio")) {
+                                    notifBody = "📞 Panggilan Suara Masuk...";
+                                    notifIcon = "https://cdn-icons-png.flaticon.com/512/5974/5974637.png"; // Icon Telepon
+                                    notifTag = `call_audio_${chatId}`; // TAG UNIK AUDIO
+                                    soundType = 'ringtone';
                                 } 
+                                else if (m.text.startsWith("CALL_JITSI:video")) {
+                                    notifBody = "📹 Panggilan Video Masuk...";
+                                    notifIcon = "https://cdn-icons-png.flaticon.com/512/3033/3033141.png"; // Icon Video
+                                    notifTag = `call_video_${chatId}`; // TAG UNIK VIDEO
+                                    soundType = 'ringtone';
+                                }
                                 else if (m.text.startsWith("IMG:")) {
                                     notifBody = "📷 Mengirim Gambar...";
+                                    notifTag = `image_${chatId}`; // TAG UNIK GAMBAR
                                 } 
                                 else if (m.text.startsWith("TYPE:VN:")) {
                                     notifBody = "🎤 Mengirim Voice Note...";
+                                    notifIcon = "https://cdn-icons-png.flaticon.com/512/3014/3014359.png"; // Icon Mic
+                                    notifTag = `vn_${chatId}`; // TAG UNIK VN
                                 } 
                                 else {
                                     try { notifBody = decryptData(m.text); } catch(e) { notifBody = "Pesan baru"; }
                                 }
 
-                                // MAINKAN SUARA
                                 playNotificationSound(soundType);
-
-                                // TAMPILKAN POPUP BROWSER (Hanya jika izin diberikan)
-                                // Kita cek lagi permission di sini untuk keamanan
-                                if (Notification.permission === "granted") {
-                                    const senderName = isGrp ? (u?.name || "Grup") : (u?.username || "Teman");
-                                    showSystemNotification(senderName, notifBody, id);
-                                }
+                                showBrowserNotification(notifTitle, notifBody, notifIcon, notifTag);
                             };
                             
-                            // Gunakan 'child_added' bukan 'value' agar efisien
                             notifRef.on("child_added", notifHandler);
                             chatListeners[id].notif = notifRef;
                         }
@@ -1103,6 +1151,7 @@
             });
         });
     }
+
     /* =========================================
         MESSAGING CORE
         ========================================= */
@@ -1119,16 +1168,12 @@
 
         if (activeChatRef) {
             activeChatRef.off();
-            console.log("Koneksi chat lama diputus.");
         }
 
         currentPartnerId = pId;
         isGroup = grp;
         currentChatId = grp ? pId : [currentUser, pId].sort().join("_");
         
-        // --- OPTIMASI 1: LimitToLast(50) ---
-        // Kita hanya memuat 50 pesan terakhir agar tidak LAG saat membuka chat.
-        // Jika user scroll ke atas, baru kita load pesan lebih lama (opsional).
         activeChatRef = db.ref("chats/" + currentChatId).limitToLast(50);
 
         document.getElementById("emojiPanel").style.display = "none";
@@ -1144,19 +1189,12 @@
         const msgsDiv = document.getElementById("msgs");
         msgsDiv.innerHTML = "";
 
-        // --- OPTIMASI 2: Listener Pesan ---
         activeChatRef.on("child_added", snap => {
             const m = snap.val();
-            
-            // Cek data valid
             if(!m) return;
-
             renderMessage(m, snap.key);
             msgsDiv.scrollTop = msgsDiv.scrollHeight;
             
-            // LOGIKA AUTO READ (STANDAR)
-            // Hanya update seen jika: Bukan pesan saya sendiri && Belum terbaca
-            // Kita cek 'm' dari snapshot agar tidak query ke DB dua kali
             if (m.from !== currentUser && !m.seen) {
                 db.ref("chats/" + currentChatId + "/" + snap.key).update({ seen: true })
                     .catch(e => console.log("Gagal update seen:", e));
@@ -1171,15 +1209,9 @@
             }
         });
 
-        // --- Listener Typing ---
-        // Matikan listener lama agar tidak tertumpuk
         const typingRef = db.ref(`typing/${currentChatId}`);
-        // Gunakan fungsi off pada referensi yang tepat
-        // Kita tidak perlu 'off' disini karena watchTyping akan menghandle referensi
-        
         watchTyping(currentChatId);
 
-        // --- Update Status ---
         if(!grp) {
             updatePartnerOnlineStatus();
         } else { 
@@ -1193,44 +1225,34 @@
         }
     }
 
-    /// --- 1. FUNGSI TOMBOL UTAMA (KLIK TOMBOL VIDEO) ---
     function startJitsi(type) {
         if (!currentChatId) {
             showToast("Buka chat dulu!");
             return;
         }
 
-        // Buat Nama Room Unik (Timestamp)
         const roomName = type === 'video' ? `Video_${Date.now()}` : `Audio_${Date.now()}`;
-        
-        // Kirim Pesan Chat
         pushMsg(`CALL_JITSI:${type}:${roomName}`);
         
-        // Langsung Join
         joinVideoCall(roomName, type);
     }
 
     function joinVideoCall(channelName, type) {
-        // Tampilkan Modal
         document.getElementById("videoCallModal").style.display = "block";
-
-        // Bersihkan Container
         document.getElementById("jitsi-container").style.display = "block";
 
         const myName = document.getElementById("myName").innerText || "User";
 
-        // Setup Jitsi Options
         const options = {
             roomName: channelName,
             width: "100%",
             height: "100%",
             parentNode: document.querySelector('#jitsi-container'),
-            // --- CONFIG: LANGSUNG MASUK (NO PREJOIN) ---
             configOverwrite: {
-                startWithAudioMuted: false, // Audio Nyala Langsung
-                startWithVideoMuted: false, // Video Nyala Langsung
-                prejoinPageEnabled: false, // <--- MATIKAN HALAMAN JOIN (INI YG PENTING)
-                disableDeepLinking: true, // Mencegah loop
+                startWithAudioMuted: false,
+                startWithVideoMuted: false,
+                prejoinPageEnabled: false,
+                disableDeepLinking: true,
                 startWithScreenSharing: false,
                 startWithTileView: false,
             },
@@ -1238,19 +1260,14 @@
                 SHOW_JITSI_WATERMARK: false,
                 SHOW_WATERMARK_FOR_GUESTS: false,
                 DEFAULT_BACKGROUND: '#000',
-                // MATIKAN TOOLBAR OPSIONAL (Kalau mau super bersih)
-                // TOOLBAR_BUTTONS: ['microphone', 'camera', 'closedcaptions', 'hangup'],
             },
-            // --- USER INFO: Nama Kita ---
             userInfo: {
                 displayName: myName
             }
         };
 
-        // Init API
         window.jitsiApi = new JitsiMeetExternalAPI("meet.jit.si", options);
 
-        // Event Listeners
         window.jitsiApi.addEventListeners({
             readyToClose: function() {
                 endVideoCall();
@@ -1268,7 +1285,6 @@
     }
 
     function endVideoCall() {
-        // 1. Matikan Jitsi
         if (window.jitsiApi) {
             try {
                 window.jitsiApi.dispose();
@@ -1278,22 +1294,18 @@
             }
         }
 
-        // 2. HENTIKAN RINGTONE (PENTING!)
         const ringtoneSound = document.getElementById("ringtoneSound");
         if (ringtoneSound) {
-            ringtoneSound.pause(); // Matikan suara
-            ringtoneSound.currentTime = 0; // Reset ke awal (supaya next call mulai dari awal)
+            ringtoneSound.pause();
+            ringtoneSound.currentTime = 0;
         }
 
-        // Hide Container & Modal
         document.getElementById("jitsi-container").style.display = "none";
         document.getElementById("videoCallModal").style.display = "none";
         
         showToast("Panggilan berakhir");
     }
-    // --- 4. FUNGSI RENDER MESSAGE (Sederhanakan) ---
-    // Hapus kode CALL_PEER atau CALL_LINK yang ribet.
-    // Jika pesan ada kata "CALL_JITSI", langsung gabung Jitsi.
+
     function renderMessage(m, key) {
         if (document.getElementById("msg-wrap-" + key)) return;
 
@@ -1302,10 +1314,8 @@
         wrap.className = `msg-wrap ${isMe ? 'me' : 'you'}`;
         wrap.id = "msg-wrap-" + key;
         
-        // --- VARIABEL TOUCH IPHONE ---
         let touchStartX, touchStartY, touchTimer;
         
-        // 1. Right Click
         wrap.oncontextmenu = (e) => {
             e.preventDefault();
             if (typeof openContextMenu === "function") {
@@ -1313,7 +1323,6 @@
             }
         };
 
-        // 2. Touch Start
         wrap.addEventListener('touchstart', (e) => {
             const touch = e.touches[0];
             touchStartX = touch.clientX;
@@ -1330,7 +1339,6 @@
             }, 600);
         }, { passive: false });
 
-        // 3. Touch Move
         wrap.addEventListener('touchmove', (e) => {
             if (!touchTimer) return;
             const touch = e.touches[0];
@@ -1342,12 +1350,10 @@
             }
         }, { passive: false });
 
-        // 4. Touch End
         wrap.addEventListener('touchend', () => {
             clearTimeout(touchTimer);
             touchTimer = null;
         });
-        // ----------------------------------------------
 
         let forwardHtml = m.forwarded ? `<div class="forward-tag" style="font-size:10px; opacity:0.6; margin-bottom:2px;"><i class="fa fa-share"></i> Diteruskan</div>` : "";
         let replyHtml = "";
@@ -1373,23 +1379,21 @@
                     const url = decryptData(m.text.replace("TYPE:VN:", ""));
                     textBody = `<div class="vn-container" style="display:flex; align-items:center; gap:8px; padding:5px 0;"><audio src="${url}" controls class="vn-player" style="max-width:200px; height:30px;"></audio></div>`;
                 } 
-                // --- LOGIKA VIDEO CALL (PEMBARUAN: TERPISAH VIDEO & AUDIO) ---
                 else if (m.text.startsWith("CALL_JITSI:")) {
                     const p = m.text.split(":");
                     const roomName = p[2];
-                    const callType = p[1]; // Mengambil tipe: 'video' atau 'audio'
+                    const callType = p[1]; 
                     
-                    // Tentukan Ikon & Teks berdasarkan tipe
-                    let icon = "fa-video";     // Default: Kamera
-                    let textLabel = "Panggilan Video"; // Default: Video
+                    let icon = "fa-video";     
+                    let textLabel = "Panggilan Video"; 
 
                     if (callType === 'audio') {
-                        icon = "fa-phone-alt"; // Jika Audio: Telepon
-                        textLabel = "Panggilan Suara"; // Jika Audio: Suara
+                        icon = "fa-phone-alt"; 
+                        textLabel = "Panggilan Suara"; 
                     }
                     
                     textBody = `
-                        <div class="call-msg" onclick="joinVideoCall('${roomName}', '${callType}')" style="cursor:pointer; text-align:center; background: rgba(212, 163, 115, 0.1); padding: 15px; border-radius: 15px; margin: 5px 0; color: var(--accent); border: 1px dashed var(--accent);">
+                        <div class="call-msg" onclick="joinVideoCall('${roomName}', '${callType}')" style="cursor:pointer; text-align:center; background: rgba(212, 163, 115, 0.1); padding: 15px; border-radius: 15px; margin: 5px 0; color: var(--accent); border: 1 dashed var(--accent);">
                             <i class="fas ${icon}"></i><br>
                             <small>${textLabel} (Klik Gabung)</small>
                         </div>`;
@@ -1445,7 +1449,6 @@
         msgsDiv.appendChild(wrap);
         msgsDiv.scrollTop = msgsDiv.scrollHeight; 
 
-        // Update Seen Status
         if (!isMe && typeof currentChatId !== 'undefined' && currentChatId) {
             if (typeof isGroup !== 'undefined' && isGroup) {
                 if (!m.seenBy || !m.seenBy[currentUser]) {
@@ -1459,21 +1462,19 @@
         }
     }
 
-    // --- 5. INIT PAGI (Hapus PeerJS Init) ---
-    // HAPUS initPeerJS(). JANGAN PANGGIL FUNGSI INIT APAPUN.
-    // Kita hanya perlu Jitsi.
-    // Fungsi Handle Delete (SUDAH DIPERBAIKI)
+    /* =========================================
+        DELETE ACTIONS
+        ========================================= */
     function handleDelete() {
-        document.getElementById("msgMenu").style.display = "none"; // <--- PERBAIKAN: Tambah titik koma
+        document.getElementById("msgMenu").style.display = "none"; 
         const now = Date.now();
-        const isMe = selectedMsgData.from === currentUser; // <--- PERBAIKAN: Tambah titik koma
+        const isMe = selectedMsgData.from === currentUser; 
         const canDeleteEveryone = isMe && (now - selectedMsgData.time < 172800000);
 
         const sheet = document.getElementById("deleteSheet");
         const btnEveryone = document.getElementById("btnDeleteEveryone");
 
         btnEveryone.style.display = canDeleteEveryone ? "block" : "none";
-        
         sheet.style.display = "flex";
     }
 
@@ -1496,6 +1497,7 @@
     }
 
     function closeDeleteSheet() { document.getElementById("deleteSheet").style.display = "none"; }
+
     /* =========================================
         SEND FUNCTIONS
         ========================================= */
@@ -1567,7 +1569,7 @@
 
         db.ref(`typing/${currentChatId}/${currentUser}`).remove();
     }
-    // Fungsi untuk Membuka Menu Konteks
+
     function openContextMenu(e, key, data) {
         if(data.deleted) return;
         selectedMsgId = key;
@@ -1595,13 +1597,12 @@
             };
         }, 100);
     }
+
     function handleForward() {
         document.getElementById("msgMenu").style.display = "none";
-
         const targetId = prompt("Masukkan User ID atau Group ID tujuan:");
         
         if (!targetId || targetId.trim() === "") return;
-
         executeForward(targetId.trim());
     }
 
@@ -1672,17 +1673,17 @@
             showToast("Pesan asli sudah terlalu lama atau dihapus");
         }
     }
+
     function cancelReply() {
         replyData = null;
         document.getElementById("reply-preview").style.display = "none";
-
     }
+
     function handleEdit() {
         isEditing = true;
         document.getElementById("text").value = decryptData(selectedMsgData.text);
         document.getElementById("text").focus();
         showToast("Mode Edit Aktif");
-
     }
 
     async function sendImage(input) {
@@ -1756,113 +1757,14 @@
 
     window.onload = initApp;
     document.getElementById("text").onkeydown = e => { if(e.key === "Enter") send(); };
-    function setupGlobalNotificationListener() {
-        // --- SAFETY CHECK 1: Firebase Terload? ---
-        if (typeof firebase === 'undefined') {
-            console.error(">>> ERROR: Firebase TIDAK TERLOAD!");
-            console.error(">>> PERIKSA SCRIPT TAG <script firebase...> DI <HEAD>");
-            return;
-        }
-
-        // --- SAFETY CHECK 2: Variabel DB Ada? ---
-        if (typeof db === 'undefined') {
-            console.error(">>> ERROR: 'db' TIDAK DIDEFINISI!");
-            console.error(">>> PERIKSA 'const db = firebase.database();' DI PUNTING SCRIPT ANDA.");
-            return;
-        }
-
-        // --- SAFETY CHECK 3: Variabel Listener Ada? ---
-        if (typeof globalNotifListener === 'undefined') {
-            console.error(">>> ERROR: 'globalNotifListener' TIDAK DIDEFINISI!");
-            console.error(">>> PERIKSA 'let globalNotifListener = null;' DI PUNTING SCRIPT ANDA.");
-            return;
-        }
-
-        logToScreen(">>> SETUP BERHASIL. VARIABEL ADA.");
-
-        // --- KODE UTAMA ---
-        if (globalNotifListener) {
-            db.ref(`user_chats/${currentUser}`).off('value', globalNotifListener);
-        }
-
-        globalNotifListener = db.ref(`user_chats/${currentUser}`).on("value", (snap) => {
-            // ... lanjut logika listener di sini ...
-            snap.forEach((child) => {
-                const chatId = child.key.startsWith("GROUP_") 
-                    ? child.key 
-                    : [currentUser, child.key].sort().join("_");
-
-                // ... lanjut ...
-            });
-        });
-    }// --- FUNGSI DEBUG LOG (FIX ERROR REFERENCE) ---
-    function logToScreen(txt) {
-        // Ambil elemen HTML yang tadi kita buat
-        const logEl = document.getElementById("debug-text");
-        const container = document.getElementById("debug-log");
-        
-        if (logEl && container) {
-            container.style.display = "block";
-            
-            // Tulis log baru
-            const time = new Date().toLocaleTimeString();
-            logEl.innerHTML += `<div>[${time}] ${txt}</div>`;
-            
-            // Auto scroll ke bawah
-            logEl.scrollTop = logEl.scrollHeight;
-
-            // Hapus log lama biar layar tidak penuh
-            const divs = logEl.getElementsByTagName("div");
-            if (divs.length > 5) {
-                logEl.removeChild(divs[0]);
-            }
-        }
-    }
-    // --- FUNGSI TAMPILKAN POP-UP BROWSER ---
-    function showSystemNotification(sender, message, partnerId) {
-        console.log(`[DEBUG] Cek Izin: ${Notification.permission}`);
-
-        if (Notification.permission === "granted") {
-            let shortMsg = message;
-            if (shortMsg.length > 50) shortMsg = shortMsg.substring(0, 50) + "...";
-
-            const options = {
-                body: shortMsg,
-                icon: 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
-                badge: 'https://cdn-icons-png.flaticon.com/512/149/149071.png',
-                vibrate: [200, 100, 200],
-                tag: partnerId
-            };
-
-            try {
-                const notification = new Notification(sender, options);
-                notification.onclick = function() {
-                    window.focus();
-                    openChat(partnerId, '', sender, partnerId.startsWith("GROUP_"));
-                    this.close();
-                };
-            } catch (e) {
-                console.error("[ERROR] Notif Browser Error:", e);
-            }
-
-        } else if (Notification.permission !== "denied") {
-            Notification.requestPermission();
-        } else {
-            console.error("[DEBUG] Izin Notif DITOLAK (Blocked).");
-        }
-    }
-
-    // --- FUNGSI MAINKAN SUARA (PENTING: JIKA HILANG, SUARA MATI & NOTIF ERROR) ---
+    
+    // --- LOGIC PLAY SOUND (SAMA SEPERTI SEBELUMNYA) ---
     function playNotificationSound(type = 'message') {
         const soundId = (type === 'ringtone') ? "ringtoneSound" : "notificationSound";
         const sound = document.getElementById(soundId);
         
         if (sound) {
             sound.currentTime = 0;
-            
-            // LOGIKA LOOP:
-            // Jika tipe 'ringtone' (Panggilan): Suara berulang terus menerus (Loop).
-            // Jika tipe 'message' (Pesan biasa): Suara hanya sekali (No Loop).
             if (type === 'ringtone') {
                 sound.loop = true; 
             } else {
@@ -1876,11 +1778,8 @@
                     console.log(`🔊 [BERHASIL] Suara ${type} diputar.`);
                 }).catch(error => {
                     console.warn("🚫 [ERROR] Audio gagal dimainkan:", error);
-                    console.warn("💡 Info: Klik sekali di layar agar browser mengizinkan suara.");
                 });
             }
-        } else {
-            console.error(`❌ [ERROR] Elemen audio '${soundId}' tidak ditemukan di HTML!`);
         }
     }
 
@@ -1889,19 +1788,15 @@
         
         pinRef.once('value', (snapshot) => {
             if (snapshot.exists()) {
-                pinRef.remove(); // Jika sudah di-pin, maka lepas (unpin)
+                pinRef.remove();
                 showToast("Sematkan dilepas");
-                
-                // Refresh list agar style 'pinned' hilang
                 const list = document.getElementById("users");
                 if(list) list.innerHTML = "";
                 loadContacts(); 
                 
             } else {
-                pinRef.set(true); // Jika belum, maka sematkan (pin)
+                pinRef.set(true);
                 showToast("Chat disematkan ke atas");
-                
-                // Refresh list agar style 'pinned' muncul
                 const list = document.getElementById("users");
                 if(list) list.innerHTML = "";
                 loadContacts();
@@ -1912,26 +1807,21 @@
 
     function deleteChat(targetId) {
         if (confirm("Hapus percakapan ini dari daftar Anda?")) {
-            // 1. Hapus dari daftar chat aktif
             db.ref(`user_chats/${currentUser}/${targetId}`).remove();
-            // 2. Hapus status pin jika ada
             db.ref(`user_settings/${currentUser}/pinned_chats/${targetId}`).remove();
             
             showToast("Kontak dihapus dari daftar");
             closeContextMenu();
             
-            // 3. Refresh list agar chat hilang dari sidebar
             const list = document.getElementById("users");
             if(list) list.innerHTML = "";
             loadContacts();
             
-            // Opsional: Jika sedang membuka chat tersebut, tutup
             if (currentChatId === targetId) {
                 document.getElementById("chat-header-area").style.display = "none";
                 document.getElementById("msgs").style.display = "none";
                 document.getElementById("inputArea").style.display = "none";
                 document.getElementById("welcome-screen").style.display = "flex";
-                // Tampilkan sidebar kembali jika di mobile
                 document.getElementById("sidebar").classList.remove("hidden");
             }
         }
@@ -1963,7 +1853,7 @@
             }, 600); 
         }, { passive: true });
 
-        element.addEventListener('touchmove', (e) => {
+        element.addEventListener('touchmove', (e) {
             if (!internalHoldTimer) return;
             
             const touch = e.touches[0];
@@ -1978,7 +1868,7 @@
 
         element.addEventListener('touchend', () => {
             clearTimeout(internalHoldTimer);
-            internalHoldTimer = null;
+            internalHeldTimer = null;
         });
 
         element.addEventListener('touchcancel', () => {
@@ -1999,22 +1889,18 @@
             menu.style.border = '1px solid #444';
             menu.style.borderRadius = '8px';
             menu.style.padding = '5px 0';
-            menu.style.minWidth = '150px'; // Diperlebar sedikit agar teks muat
+            menu.style.minWidth = '150px'; 
             menu.style.boxShadow = '0 4px 15px rgba(0,0,0,0.5)';
             menu.style.color = 'white';
             document.body.appendChild(menu);
         }
 
-        // --- LOGIKA CEK STATUS PIN BARU ---
         db.ref(`user_settings/${currentUser}/pinned_chats/${targetId}`).once('value', (snapshot) => {
             const isPinned = snapshot.exists();
-            
-            // Tentukan Teks dan Ikon berdasarkan status
             const pinText = isPinned ? "Lepas Sematan" : "Sematkan";
-            const pinIcon = isPinned ? "fa-thumbtack" : "fa-thumbtack"; // Bisa diganti fa-thumbtack yang lain jika mau
-            const pinColor = isPinned ? "#ff5e5e" : "white"; // Merah jika mau dilepas, Putih jika mau pasang
+            const pinIcon = isPinned ? "fa-thumbtack" : "fa-thumbtack"; 
+            const pinColor = isPinned ? "#ff5e5e" : "white"; 
 
-            // Isi Menu
             menu.innerHTML = `
                 <div onclick="pinChat('${targetId}')" style="padding: 10px 15px; cursor: pointer; color: ${pinColor};">
                     <i class="fas ${pinIcon}" style="margin-right:10px;"></i> ${pinText}
@@ -2024,7 +1910,6 @@
                 </div>
             `;
 
-            // Atur Posisi Menu
             const menuWidth = 160;
             const menuHeight = 100;
             let finalX = x;
@@ -2037,7 +1922,6 @@
             menu.style.top = finalY + 'px';
             menu.style.display = 'block';
 
-            // Klik di mana saja untuk tutup menu
             const closeMenu = () => {
                 menu.style.display = 'none';
                 document.removeEventListener('click', closeMenu);
@@ -2066,6 +1950,7 @@
         menu.style.left = posX + "px";
         menu.style.top = posY + "px";
     }
+
     function closeContextMenu() {
         if (contextMenu) contextMenu.style.display = 'none';
         if (menuOverlay) menuOverlay.style.display = 'none';
@@ -2087,7 +1972,6 @@
         }, 1000);
     }
 
-    // --- 1. FUNGSI MULAI REKAM (FIX VISIBILITY) ---
     async function handleStart(e) {
         if (e.cancelable) e.preventDefault();
 
@@ -2139,20 +2023,17 @@
                         showToast("Error koneksi server.");
                     }
                 }
-                // Panggil fungsi reset tampilan di sini
                 toggleRecordingUI(false);
             };
 
             mediaRecorder.start();
-            
-            // PANGGIL FUNGSI TAMPILAN (TRUE = Merekam)
             toggleRecordingUI(true);
             startTimer();
 
         } catch (err) {
             console.error(err);
             alert("Akses mic ditolak.");
-            toggleRecordingUI(false); // Pastikan balik normal jika error
+            toggleRecordingUI(false); 
         }
     }
     
@@ -2162,23 +2043,17 @@
         const sendButton = document.getElementById("sendButton");
         const micButton = document.getElementById("micButton");
 
-        // --- DETEKSI PERANGKAT ---
         const isMobile = window.innerWidth <= 768;
 
         if (isRecording) {
-            // --- SAAT MEREKAM ---
-            
             if (isMobile) {
-                // KHUSUS HP: Matikan display-nya agar ruang benar-benar kosong (Fix Crop)
                 if(normalInput) normalInput.style.display = 'none';
                 if(sendButton) sendButton.style.display = 'none';
             } else {
-                // KHUSUS LAPTOP: Pakai Opacity (Transparan) agar transisi smooth
                 if(normalInput) {
                     normalInput.style.opacity = '0'; 
                     normalInput.style.pointerEvents = 'none';
                 }
-                // Di laptop tombol send juga disembunyikan saat rekam
                 if(sendButton) sendButton.style.display = 'none';
             }
 
@@ -2186,7 +2061,6 @@
             if(micButton) micButton.style.color = '#ff5e5e';
             
         } else {
-            // --- SAAT SELESAI (RESET) ---
             clearInterval(recordInterval);
             const timerDisplay = document.getElementById('record-timer');
             if(timerDisplay) timerDisplay.innerText = "00:00";
@@ -2194,16 +2068,13 @@
             if(recordingUI) recordingUI.style.display = 'none';
             
             if (isMobile) {
-                // KHUSUS HP: Kembalikan display flex
                 if(normalInput) normalInput.style.display = 'flex';
                 if(sendButton) sendButton.style.display = 'flex';
             } else {
-                // KHUSUS LAPTOP: Kembalikan opacity
                 if(normalInput) {
                     normalInput.style.opacity = '1'; 
                     normalInput.style.pointerEvents = 'auto';
                 }
-                // Kembalikan tombol send di laptop
                 if(sendButton) sendButton.style.display = 'block';
             }
 
@@ -2211,7 +2082,6 @@
         }
     }
 
-    // --- 2. FUNGSI DETEKSI GESER & BERHENTI ---
     function handleMove(e) {
         if (!mediaRecorder || mediaRecorder.state !== "recording") return;
         let currentX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
@@ -2221,14 +2091,12 @@
         if (diffX > 60) {
             isCancelled = true;
             if(instruction) {
-                // TEKS DIPERPENDEK: "Batalkan"
                 instruction.innerHTML = "<i class='fas fa-trash'></i> Batalkan"; 
                 instruction.style.color = "#ff5e5e";
             }
         } else {
             isCancelled = false;
             if(instruction) {
-                // TEKS DIPERPENDEK: "Geser Batal"
                 instruction.innerHTML = "<i class='fas fa-chevron-left'></i> Geser Batal"; 
                 instruction.style.color = "#888";
             }
@@ -2238,27 +2106,22 @@
     function handleStop() {
         if (mediaRecorder && mediaRecorder.state === "recording") {
             mediaRecorder.stop();
-            // Tampilan di-reset otomatis oleh mediaRecorder.onstop
         } else {
-            toggleRecordingUI(false); // Paksa reset jika error
+            toggleRecordingUI(false);
         }
     }
 
     function resetInputUI() {
         clearInterval(recordInterval);
-        
-        // Reset Timer
         const timerDisplay = document.getElementById('record-timer');
         if(timerDisplay) timerDisplay.innerText = "00:00";
         
-        // Kembalikan Tampilan Awal
         if(recordingUI) recordingUI.style.display = 'none';
         if(normalInput) normalInput.style.display = 'flex';
         if(sendButton) sendButton.style.display = 'block';
         if(micButton) micButton.style.color = '';
     }
 
-    // --- 3. EVENT LISTENERS (Pastikan ada) ---
     if(micButton) {
         micButton.addEventListener('mousedown', handleStart);
         micButton.addEventListener('touchstart', handleStart, {passive: false});
