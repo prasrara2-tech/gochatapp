@@ -456,6 +456,122 @@
         display: none; /* Hidden saat tidak dipakai */
     }
 
+        /* =========================================
+        CALL OVERLAY (FULL SCREEN ANIMATION)
+        ========================================= */
+    #call-overlay {
+        display: none; /* Hidden by default */
+        position: fixed;
+        inset: 0;
+        background: #000;
+        z-index: 10000000; /* Paling atas */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: white;
+        overflow: hidden;
+    }
+
+    /* Background Animasi (Gelombang Biru/Hijau) */
+    .call-bg-anim {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(46, 204, 113, 0.4) 0%, rgba(0,0,0,0) 70%);
+        animation: pulse-ring 2s infinite;
+        z-index: 1;
+    }
+    
+    .call-bg-anim:nth-child(2) { animation-delay: 0.5s; }
+    .call-bg-anim:nth-child(3) { animation-delay: 1s; }
+
+    @keyframes pulse-ring {
+        0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; }
+        100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+    }
+
+    /* Avatar Panggilan */
+    .call-avatar {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 4px solid var(--accent);
+        z-index: 2;
+        margin-bottom: 20px;
+        animation: float 3s ease-in-out infinite;
+        box-shadow: 0 0 30px rgba(212, 163, 115, 0.5);
+    }
+
+    @keyframes float {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-15px); }
+        100% { transform: translateY(0px); }
+    }
+
+    .call-info {
+        z-index: 2;
+        margin-bottom: 50px;
+    }
+    .call-name { font-size: 28px; font-weight: bold; margin-bottom: 10px; }
+    .call-status { font-size: 16px; color: #ccc; animation: blink-text 1.5s infinite; }
+
+    @keyframes blink-text {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    /* Tombol Action Bawah */
+    .call-actions {
+        position: absolute;
+        bottom: 60px; /* Naikkan sedikit jika di HP */
+        display: flex;
+        gap: 40px;
+        z-index: 2;
+        width: 100%;
+        justify-content: center;
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .btn-call {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        cursor: pointer;
+        border: none;
+        transition: transform 0.2s;
+    }
+
+    .btn-call:active { transform: scale(0.9); }
+
+    .btn-accept {
+        background: #2ecc71; /* Hijau */
+        color: white;
+        box-shadow: 0 0 20px rgba(46, 204, 113, 0.4);
+    }
+
+    .btn-reject {
+        background: #e74c3c; /* Merah */
+        color: white;
+        box-shadow: 0 0 20px rgba(231, 76, 60, 0.4);
+    }
+
+    @media (max-width: 768px) {
+        .call-name { font-size: 24px; }
+        .call-avatar { width: 120px; height: 120px; }
+        .call-actions { bottom: 40px; }
+    }
+
 
     </style>
 </head>
@@ -609,6 +725,33 @@
         <!-- HANYA CONTAINER JITSI -->
         <div id="jitsi-container" style="width: 100%; height: 100%; display: none;"></div>
     </div>
+
+    <!-- OVERLAY PANGGILAN MASUK -->
+<div id="call-overlay" style="display: none;">
+    <!-- Animasi Gelombang Belakang -->
+    <div class="call-bg-anim"></div>
+    <div class="call-bg-anim"></div>
+    <div class="call-bg-anim"></div>
+
+    <!-- Foto Penelepon -->
+    <img id="call-overlay-avatar" src="" class="call-avatar">
+
+    <!-- Nama & Status -->
+    <div class="call-info">
+        <div id="call-overlay-name" class="call-name">Nama Panggilan</div>
+        <div class="call-status">Sedang Menelepon...</div>
+    </div>
+
+    <!-- Tombol Jawab / Tolak -->
+    <div class="call-actions">
+        <button onclick="rejectCall()" class="btn-call btn-reject">
+            <i class="fas fa-phone-slash"></i>
+        </button>
+        <button onclick="acceptCall()" class="btn-call btn-accept">
+            <i class="fas fa-phone"></i>
+        </button>
+    </div>
+</div>
     <script>
     /* =========================================
         CONFIG & INIT
@@ -663,6 +806,8 @@
     let contactsListener = null; 
     let unreadListeners = {}; 
     let audioContextUnlocked = false;
+    let currentCallRoom = null;
+    let currentCallType = null;
         
     // Cek Fokus
     window.addEventListener('focus', () => {
@@ -710,7 +855,7 @@
         if(!currentUser) { window.location.href="index.html"; return; }
         
         console.log("🚀 [INIT] Starting App...");
-        
+        chatListeners = {}; 
         // --- 1. REQUEST NOTIFICATION PERMISSION FIRST ---
         if ("Notification" in window && Notification.permission === "default") {
             try {
@@ -930,16 +1075,58 @@
         NOTIFICATION LOGIC (SPLIT CATEGORIES)
         ========================================= */
     
-    function showBrowserNotification(title, body, icon, tag, onClickUrl) {
-        // --- 1. SERVICE WORKER PUSH (BEST FOR BACKGROUND) ---
+      function showBrowserNotification(title, body, icon, tag) {
+        // --- URL GAMBAR BACKGROUND HITAM PEKAT ---
+        // Kita pakai URL gambar berukuran 1px untuk mengubah background notifikasi menjadi hitam
+        const darkBackgroundUrl = "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Nvidia.svg/1200px-Nvidia.svg.png"; // Placeholder URL
+        // Trik: Gunakan URL gambar hitam 1x1 px atau gunakan trik base64 (lihat bawah)
+        
+        // --- GAMBAR HITAM 1x1 PIXEL (DATA URI) ---
+        // Ini adalah "hack" terbaik untuk membuat background notifikasi hitam tanpa perlu file gambar eksternal
+        const blackPixel = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+
+        // --- OPTIONS KONFIGURASI ---
+        const options = {
+            body: body,
+            icon: icon, // Ikon Avatar Pengirim
+            
+            // 1. Badge: Ikon kecil di pojok kanan notifikasi (Bisa pakai logo GoChat)
+            badge: "https://cdn-icons-png.flaticon.com/512/149/149071.png", 
+            
+            // 2. Image: Gambar utama notifikasi. Kita pakai 'blackPixel' untuk menjadikan background gelap
+            // Beberapa browser (Chrome Desktop) mengabaikan background color, tapi merespon 'image'.
+            // Tapi jika kita ingin Tampilan Chat, kita bisa pakai gambar overlay gelap.
+            // Untuk Dark Mode "Murni", kita biarkan Image kosong/null agar icon yang dominan.
+            image: null, 
+
+            // 3. Vibrate: Getaran HP
+            vibrate: [200, 100, 200],
+            
+            // 4. Tag: Kategori Notifikasi
+            tag: tag,
+            
+            // 5. Teks Warna (Android 12+ Only)
+            // Membaca dark mode OS user, tapi jika Anda ingin memaksa putih/hitam di Android lama, 
+            // triknya biasanya melalui gambar background.
+            
+            // --- PENTING: BIARKAN BROWSER MENENTUKAN JUDUL APLIKASI ---
+            // Tampilan "GoChat Pro" di header notifikasi diatur oleh "Icon" atau "Badge".
+            // Title tetap nama pengirim agar user tahu siapa yang mengirim.
+            // Tapi jika Anda ingin Title = "GoChat", maka ganti parameter 'title' di bawah.
+            
+            requireInteraction: true // Pertahankan notifikasi sampai diklik
+        };
+
+        // --- 1. TRY SHOW VIA SERVICE WORKER (BEST PRACTICE) ---
         if (navigator.serviceWorker && navigator.serviceWorker.controller) {
             const dataPayload = {
-                title: title,
+                title: title, // Nama Pengirim / "GoChat Pro"
                 body: body,
                 icon: icon,
-                badge: icon,
-                tag: tag, // TAG PENTING untuk memisahkan kategori
-                url: onClickUrl
+                badge: "https://cdn-icons-png.flaticon.com/512/149/149071.png", // Ikon Kecil GoChat (Membuat notifikasi jelas bukan default Chrome)
+                tag: tag,
+                // Kirim data image background ke SW (opsional jika SW Anda support custom bg)
+                data: { url: window.location.href } 
             };
 
             navigator.serviceWorker.controller.postMessage({
@@ -949,21 +1136,22 @@
         } 
         // --- 2. FALLBACK: NATIVE NOTIFICATION (Jika SW gagal/offline) ---
         else if (Notification.permission === "granted") {
-            const options = {
-                body: body,
-                icon: icon,
-                badge: icon,
-                vibrate: [200, 100, 200],
-                tag: tag,
-                requireInteraction: true
-            };
             
+            // --- TRIK GELAP MODE (DARK MODE HACK) ---
+            // Kita bisa pakai CSS khusus di 'data' untuk browser tertentu? Tidak support umum.
+            // Solusi terbaik: Tampilkan pesan judul "GoChat" + Isi Pesan.
+            
+            // Ubah Title agar selalu "GoChat Pro" jika Anda ingin header hitam (sebagian browser)
+            // const finalTitle = "GoChat Pro"; 
+            const finalTitle = title; // Jaga Nama Pengirim agar informatif
+
             try {
-                const notif = new Notification(title, options);
+                const notif = new Notification(finalTitle, options);
+                
                 notif.onclick = () => {
                     window.focus();
-                    // Logic open chat bisa ditambahkan disini sederhana
-                    window.location.href = onClickUrl || "#"; 
+                    // Jika ingin buka chat spesifik, logic disini
+                    // window.location.href = "#chat-" + tag;
                     notif.close();
                 };
             } catch (e) {
@@ -971,22 +1159,35 @@
             }
         }
     }
-
     /* =========================================
         CONTACTS & LIST
         ========================================= */
-    function loadContacts() {
+        function loadContacts() {
+        // 1. MATIKAN SEMUA LISTENER YANG ADA
+        // Ini mencegah "tumpukan" listener yang membuat koneksi putus
         if (contactsListener) {
             db.ref(`user_chats/${currentUser}`).off('value', contactsListener);
         }
 
-        contactsListener = db.ref(`user_chats/${currentUser}`).on("value", async (snap) => {
+        // Loop melalui semua chat yang sedang terpantau untuk memastikan listener mati
+        for (const id in chatListeners) {
+            if (chatListeners[id].badge) chatListeners[id].badge.off();
+            if (chatListeners[id].notif) chatListeners[id].notif.off();
+        }
+        // Reset object listeners menjadi kosong
+        chatListeners = {};
+
+        // 2. BUAT LISTENER BARU
+        const newListener = db.ref(`user_chats/${currentUser}`).on("value", async (snap) => {
+            
+            // Ambil data Pinned (tetap sama)
             const pinnedSnap = await db.ref(`user_settings/${currentUser}/pinned_chats`).once("value");
             const pinnedIds = pinnedSnap.val() || {};
             const list = document.getElementById("users");
             
             let currentSnapshotIds = [];
             
+            // Loop user chats (tetap sama)
             snap.forEach(c => { 
                 const id = c.key;
                 currentSnapshotIds.push(id);
@@ -1002,17 +1203,18 @@
                     const isPinned = !!pinnedIds[id];
                     const chatId = isGrp ? id : [currentUser, id].sort().join("_");
 
+                    // --- LOGIKA UI (Update/Create Contact) ---
                     if (el) {
+                        // UPDATE
                         if (isPinned && !el.classList.contains('pinned')) el.classList.add('pinned');
                         if (!isPinned && el.classList.contains('pinned')) el.classList.remove('pinned');
-
                         const nameEl = el.querySelector("b");
                         const msgEl = el.querySelector("span");
-                        
                         if(nameEl) nameEl.innerText = `${u?.name || u?.username || id} ${isPinned ? '📌' : ''}`;
                         if(msgEl) msgEl.innerText = info.lastMsg || '...';
 
                     } else {
+                        // CREATE
                         let div = document.createElement("div");
                         div.id = `contact-${id}`; 
                         div.className = `user ${isPinned ? 'pinned' : ''}`;
@@ -1029,110 +1231,146 @@
 
                         setupHoldListener(div, id);
                         list.appendChild(div);
+                    }
 
-                        if (!chatListeners[id]) chatListeners[id] = { badge: null, notif: null };
+                    // --- PENTING: SETUP LISTENER NOTIFIKASI DISINI ---
+                    // Kita gunakan `if (!chatListeners[id])` agar tidak duplikat
+                    // Tapi KITA JUGA mengecek apakah listener mati
+                    
+                    // 1. Badge Listener
+                    if (!chatListeners[id]) chatListeners[id] = { badge: null, notif: null };
 
-                        // 1. Listener Badge
-                        if (!chatListeners[id].badge) {
-                            const unreadRef = db.ref("chats/" + chatId).limitToLast(50).orderByChild("seen").equalTo(false);
-                            const badgeHandler = (unreadSnap) => {
-                                let count = 0;
-                                unreadSnap.forEach(child => { 
-                                    const m = child.val();
-                                    if (!m) return; 
-                                    if(m.from !== currentUser) count++; 
-                                });
-                                
-                                const currentEl = document.getElementById(`contact-${id}`);
-                                if(currentEl) {
-                                    let badgeEl = currentEl.querySelector('.unread-badge');
-                                    if(count > 0) {
-                                        if(!badgeEl) {
-                                            badgeEl = document.createElement("div");
-                                            badgeEl.className = "unread-badge";
-                                            currentEl.appendChild(badgeEl);
-                                        }
-                                        badgeEl.innerText = count;
-                                    } else {
-                                        if(badgeEl) badgeEl.remove();
+                    if (!chatListeners[id].badge) {
+                        const unreadRef = db.ref("chats/" + chatId).limitToLast(50).orderByChild("seen").equalTo(false);
+                        const badgeHandler = (unreadSnap) => {
+                            let count = 0;
+                            unreadSnap.forEach(child => { 
+                                const m = child.val();
+                                if (!m) return; 
+                                if(m.from !== currentUser) count++; 
+                            });
+                            const currentEl = document.getElementById(`contact-${id}`);
+                            if(currentEl) {
+                                let badgeEl = currentEl.querySelector('.unread-badge');
+                                if(count > 0) {
+                                    if(!badgeEl) {
+                                        badgeEl = document.createElement("div");
+                                        badgeEl.className = "unread-badge";
+                                        currentEl.appendChild(badgeEl);
                                     }
+                                    badgeEl.innerText = count;
+                                } else {
+                                    if(badgeEl) badgeEl.remove();
                                 }
-                            };
-                            unreadRef.on("value", badgeHandler);
-                            chatListeners[id].badge = unreadRef; 
-                        }
+                            }
+                        };
+                        unreadRef.on("value", badgeHandler);
+                        chatListeners[id].badge = unreadRef; 
+                    }
 
-                        // 2. Listener Notifikasi (DIPISAH KATEGORINYA)
-                        if (!chatListeners[id].notif) {
-                            const notifRef = db.ref("chats/" + chatId).limitToLast(1);
+                    // 2. NOTIFICATION LISTENER (VERSI FORCE SHOW)
+                    // Pastikan listener notif dibuat untuk setiap contact baru
+                    if (!chatListeners[id].notif) {
+                        const notifRef = db.ref("chats/" + chatId).limitToLast(20);
+                        
+                        const notifHandler = (msgSnap) => {
+                            const m = msgSnap.val();
                             
-                            const notifHandler = (msgSnap) => {
-                                const m = msgSnap.val();
+                            // --- CEK 1: Validitas Data ---
+                            if (!m || !m.text) return;
+
+                            // --- CEK 2: Bukan Pesan Sendiri ---
+                            if (m.from === currentUser) return;
+
+                            // --- CEK 3: Bukan Pesan Terhapus ---
+                            if (m.deleted) return;
+
+                            // --- CEK 4: Pesan Baru (15 detik terakhir) ---
+                            // HANYA notif jika pesan baru saja masuk. Ini mencegah notif spam saat refresh.
+                            const isRecent = (Date.now() - m.time) < 20000; 
+                            if (!isRecent) return;
+
+                            // --- CEK 5: Saya SEDANG MEMBUKA CHAT INI? ---
+                            // Jika ya, jangan notif.
+                            if (currentChatId === chatId) {
+                                console.log(`[NOTIF] Chat aktif, dibatalkan: ${chatId}`);
+                                return; 
+                            }
+
+                            // --- CEK 6: APLIKASI SEDANG FOKUS? ---
+                            // Jika aplikasi sedang dibuka (minimize tapi user lihat layar lain), 
+                            // biasanya browser memblokir notif. Tapi kita coba jalankan logic.
+                            
+                            // --- LOGIKA TAMPILKAN NOTIF ---
+                            console.log(`[NOTIF] MEMPROSES PESAN DARI: ${m.from}`);
+
+                            let notifTitle = isGrp ? (u?.name || "Grup") : (u?.username || "Teman");
+                            let notifBody = "";
+                            let notifIcon = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; 
+                            let notifTag = `chat_${chatId}`; 
+                            let soundType = 'message';
+
+                            // Cek Prefix
+                            if (m.text.startsWith("CALL_JITSI:")) {
+                                const p = m.text.split(":");
+                                const callType = p[1]; 
+                                const roomName = p[2];
+
+                                notifBody = (callType === 'audio') ? "📞 Panggilan Suara Masuk..." : "📹 Panggilan Video Masuk...";
+                                notifIcon = (callType === 'audio') 
+                                    ? "https://cdn-icons-png.flaticon.com/512/5974/5974637.png" 
+                                    : "https://cdn-icons-png.flaticon.com/512/3033/3033141.png"; 
+                                notifTag = `call_${callType}_${chatId}`; 
+                                soundType = 'ringtone';
                                 
-                                if (!m || !m.text) return;
-                                if (m.from === currentUser) return;
-                                if (currentChatId === chatId) return;
-                                if (m.deleted) return;
+                                // Panggil Overlay
+                                showCallOverlay(roomName, callType, notifTitle, u?.photo);
 
-                                // --- LOGIKA KATEGORI ---
-                                let notifTitle = isGrp ? (u?.name || "Grup") : (u?.username || "Teman");
-                                let notifBody = "";
-                                let notifIcon = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; // Default
-                                let notifTag = `chat_${chatId}`; // Default Tag
-                                let soundType = 'message';
+                            } else if (m.text.startsWith("IMG:")) {
+                                notifBody = "📷 Mengirim Gambar...";
+                                notifTag = `image_${chatId}`; 
+                            } else if (m.text.startsWith("TYPE:VN:")) {
+                                notifBody = "🎤 Mengirim Voice Note...";
+                                notifIcon = "https://cdn-icons-png.flaticon.com/512/3014/3014359.png"; 
+                                notifTag = `vn_${chatId}`; 
+                            } else {
+                                try { notifBody = decryptData(m.text); } catch(e) { notifBody = "Pesan baru"; }
+                            }
 
-                                // Cek Prefix
-                                if (m.text.startsWith("CALL_JITSI:audio")) {
-                                    notifBody = "📞 Panggilan Suara Masuk...";
-                                    notifIcon = "https://cdn-icons-png.flaticon.com/512/5974/5974637.png"; // Icon Telepon
-                                    notifTag = `call_audio_${chatId}`; // TAG UNIK AUDIO
-                                    soundType = 'ringtone';
-                                } 
-                                else if (m.text.startsWith("CALL_JITSI:video")) {
-                                    notifBody = "📹 Panggilan Video Masuk...";
-                                    notifIcon = "https://cdn-icons-png.flaticon.com/512/3033/3033141.png"; // Icon Video
-                                    notifTag = `call_video_${chatId}`; // TAG UNIK VIDEO
-                                    soundType = 'ringtone';
-                                }
-                                else if (m.text.startsWith("IMG:")) {
-                                    notifBody = "📷 Mengirim Gambar...";
-                                    notifTag = `image_${chatId}`; // TAG UNIK GAMBAR
-                                } 
-                                else if (m.text.startsWith("TYPE:VN:")) {
-                                    notifBody = "🎤 Mengirim Voice Note...";
-                                    notifIcon = "https://cdn-icons-png.flaticon.com/512/3014/3014359.png"; // Icon Mic
-                                    notifTag = `vn_${chatId}`; // TAG UNIK VN
-                                } 
-                                else {
-                                    try { notifBody = decryptData(m.text); } catch(e) { notifBody = "Pesan baru"; }
-                                }
-
-                                playNotificationSound(soundType);
-                                showBrowserNotification(notifTitle, notifBody, notifIcon, notifTag);
-                            };
+                            // MAINKAN SUARA
+                            playNotificationSound(soundType);
                             
-                            notifRef.on("child_added", notifHandler);
-                            chatListeners[id].notif = notifRef;
-                        }
+                            // TAMPILKAN NOTIF BROWSER / SERVICE WORKER
+                            showBrowserNotification(notifTitle, notifBody, notifIcon, notifTag);
+                        };
+                        
+                        notifRef.on("child_added", notifHandler);
+                        chatListeners[id].notif = notifRef;
                     }
                 });
             });
 
-            // SCENARIO C: REMOVE
+            // --- LOGIKA HAPUS (SCENARIO C) ---
             const existingDivs = document.querySelectorAll('.user');
             existingDivs.forEach(div => {
                 const divId = div.id.replace('contact-', '');
                 if (!currentSnapshotIds.includes(divId)) {
                     if (chatListeners[divId]) {
-                        if (chatListeners[divId].badge) chatListeners[divId].badge.off();
-                        if (chatListeners[divId].notif) chatListeners[divId].notif.off();
+                        if (chatListeners[divId].badge) {
+                            chatListeners[divId].badge.off();
+                            chatListeners[divId].badge = null;
+                        }
+                        if (chatListeners[divId].notif) {
+                            chatListeners[divId].notif.off();
+                            chatListeners[divId].notif = null;
+                        }
                         delete chatListeners[divId];
                     }
                     div.remove();
                 }
             });
 
-            // SORTING
+            // --- SORTING ---
             let items = [];
             snap.forEach(c => { 
                 items.push({ id: c.key, info: c.val(), isPinned: !!pinnedIds[c.key] });
@@ -1150,6 +1388,57 @@
                 }
             });
         });
+
+        // Simpan referensi listener baru agar bisa dimatikan nanti
+        contactsListener = newListener;
+    }
+
+     function showCallOverlay(roomName, type, name, photoUrl) {
+        const overlay = document.getElementById("call-overlay");
+        const avatar = document.getElementById("call-overlay-avatar");
+        const nameEl = document.getElementById("call-overlay-name");
+
+        // Set Data
+        currentCallRoom = roomName;
+        currentCallType = type;
+        nameEl.innerText = name;
+        avatar.src = photoUrl || (type === 'video' ? "https://cdn-icons-png.flaticon.com/512/3033/3033141.png" : "https://cdn-icons-png.flaticon.com/512/5974/5974637.png");
+
+        // Tampilkan Overlay
+        overlay.style.display = "flex";
+        
+        // Pastikan Ringtone diputar
+        playNotificationSound('ringtone');
+    }
+
+    function hideCallOverlay() {
+        document.getElementById("call-overlay").style.display = "none";
+        const ringtone = document.getElementById("ringtoneSound");
+        if(ringtone) {
+            ringtone.pause();
+            ringtone.currentTime = 0;
+        }
+    }
+
+    function acceptCall() {
+        if (currentCallRoom && currentCallType) {
+            hideCallOverlay();
+            // Buka Jitsi langsung
+            joinVideoCall(currentCallRoom, currentCallType);
+            
+            // Kirim pesan status (opsional)
+            // pushMsg("STATUS:CALL_ACCEPTED"); 
+        }
+    }
+
+    function rejectCall() {
+        hideCallOverlay();
+        showToast("Panggilan ditolak");
+        
+        // Opsional: Kirim notifikasi balasan ke database bahwa panggilan ditolak
+        // if (currentChatId) {
+        //     pushMsg("STATUS:CALL_REJECTED");
+        // }
     }
 
     /* =========================================
@@ -2139,4 +2428,5 @@
     </body>
 
     </html>
+
 
