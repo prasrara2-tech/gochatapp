@@ -16,7 +16,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script> <!-- Tambahkan Messaging -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
     <script src="https://meet.jit.si/external_api.js"></script>
   
    
@@ -117,7 +117,6 @@
     }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     
-    /* --- UPDATE: AGAR PESAN SAYA MIRIP TEMA TEMAN (PUTIH) --- */
     .me .msg { 
         background: var(--you-chat); 
         color: white; 
@@ -137,9 +136,7 @@
         border: 1px dashed var(--accent); cursor: pointer;
     }
 
-    /* --- MODIFIKASI DIMULAI DISINI --- */
-    
-/* --- 1. INPUT AREA (BASE: KHUSUS HP) --- */
+    /* --- 1. INPUT AREA (BASE: KHUSUS HP) --- */
     .input-area { 
         padding: 10px 2px; 
         background: var(--bg-base); 
@@ -204,15 +201,11 @@
         text-overflow: ellipsis; 
     }
 
-    /* =========================================
-    KHUSUS LAPTOP (AGAR KEMBALI BAGUS)
-    ========================================= */
     @media (min-width: 769px) {
         .input-row {
             gap: 10px; 
             padding: 10px 15px;
         }
-
         #slide-instruction {
             font-size: 13px;
             max-width: 60%; 
@@ -284,7 +277,6 @@
         .chat { width: 100%; }
     }
 
-    /* Style untuk Menu Pilihan */
     .msg-context-menu {
         display: none; position: fixed; z-index: 2000;
         background: #1a1a1a; border: 1px solid var(--glass-border);
@@ -317,7 +309,6 @@
     }
     .forward-tag { font-size: 10px; opacity: 0.6; font-style: italic; margin-bottom: 3px; }
     
-    /* Action Sheet Hapus */
     .action-sheet-overlay {
         display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
         z-index: 3000; align-items: flex-end;
@@ -334,276 +325,123 @@
     .sheet-btn.danger { background: #ff4757; color: white; }
     .sheet-btn.cancel { background: #333; color: white; }
 
-    .context-menu {
-        position: fixed !important;
-        display: none;
-        background: #1a1a1a !important; 
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
-        border-radius: 12px !important;
-        width: 180px !important;
-        z-index: 9999999 !important; 
-        box-shadow: 0 10px 30px rgba(0,0,0,0.9) !important;
-        overflow: hidden !important;
-        padding: 5px 0 !important;
-    }
-
-    .context-menu-item {
-        padding: 12px 16px !important;
-        font-size: 14px !important;
-        color: #ffffff !important;
-        display: flex !important;
-        align-items: center !important;
-        gap: 12px !important;
-        cursor: pointer !important;
-        background: transparent !important;
-        transition: 0.2s;
-    }
-
-    .context-menu-item:hover {
-        background: rgba(255, 255, 255, 0.1) !important;
-    }
-
-    .context-menu-item i {
-        width: 20px !important;
-        text-align: center !important;
-        color: #d4af37 !important; 
-    }
-
-    .context-menu-item.danger {
-        color: #ff5e5e !important;
-    }
-
-    .context-menu-item.danger i {
-        color: #ff5e5e !important;
-    }
-
     #recording-ui[style*="display: flex"] {
         pointer-events: auto;
     }
 
-    .blink {
-        animation: blink-red 1s infinite;
-    }
-
-    @keyframes blink-red {
-        0% { opacity: 1; }
-        50% { opacity: 0.2; }
-        100% { opacity: 1; }
-    }
-
+    .blink { animation: blink-red 1s infinite; }
+    @keyframes blink-red { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }
 
     @keyframes slideLeft {
-        0% { 
-            transform: translateX(0); 
-            opacity: 1; 
-        }
-        100% { 
-            transform: translateX(-15px); 
-            opacity: 0.2; 
-        }
+        0% { transform: translateX(0); opacity: 1; }
+        100% { transform: translateX(-15px); opacity: 0.2; }
     }
 
-    #normal-input {
-        transition: all 0.2s ease;
-    }
-    .btn-action, #micButton {
-        cursor: pointer; 
-        user-select: none; 
-    }
-    
-    .vn-player {
-        max-width: 200px;
-        height: 35px;
-        border-radius: 20px;
-        filter: sepia(20%) saturate(70%) grayscale(1);
-    }
-    
-    .fa-users, .fa-user-plus {
-        position: relative;
-        z-index: 10;
-    }
+    #normal-input { transition: all 0.2s ease; }
+    .btn-action, #micButton { cursor: pointer; user-select: none; }
+    .vn-player { max-width: 200px; height: 35px; border-radius: 20px; filter: sepia(20%) saturate(70%) grayscale(1); }
+    .fa-users, .fa-user-plus { position: relative; z-index: 10; }
 
-    /* =========================================
-    MODAL VIDEO CALL (JITSI ONLY - GANTIKAN AGORA)
-    ========================================= */
-
-    /* 1. Modal Utama */
+    /* MODAL VIDEO CALL */
     #videoCallModal {
-        display: none; 
-        position: fixed;
-        inset: 0; 
-        background: #000;
-        z-index: 10000000; 
-        width: 100%;
-        height: 100%;
-        padding-top: env(safe-area-inset-top); 
-        padding-bottom: env(safe-area-inset-bottom);
+        display: none; position: fixed; inset: 0; background: #000; z-index: 10000000; width: 100%; height: 100%;
+        padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
     }
+    #jitsi-container { width: 100%; height: 100%; display: none; }
 
-    /* 2. Container Jitsi */
-    #jitsi-container {
-        width: 100%;
-        height: 100%;
-        display: none; 
-    }
-
-    /* =========================================
-    CALL OVERLAY (FULL SCREEN ANIMATION)
-    ========================================= */
+    /* CALL OVERLAY */
     #call-overlay {
-        display: none; 
-        position: fixed;
-        inset: 0;
-        background: #000;
-        z-index: 10000000; 
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        color: white;
-        overflow: hidden;
+        display: none; position: fixed; inset: 0; background: #000; z-index: 10000000; 
+        flex-direction: column; align-items: center; justify-content: center; 
+        text-align: center; color: white; overflow: hidden;
     }
-
-    /* Background Animasi (Gelombang Biru/Hijau) */
     .call-bg-anim {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 200px;
-        height: 200px;
-        border-radius: 50%;
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        width: 200px; height: 200px; border-radius: 50%;
         background: radial-gradient(circle, rgba(46, 204, 113, 0.4) 0%, rgba(0,0,0,0) 70%);
-        animation: pulse-ring 2s infinite;
-        z-index: 1;
+        animation: pulse-ring 2s infinite; z-index: 1;
     }
-    
     .call-bg-anim:nth-child(2) { animation-delay: 0.5s; }
     .call-bg-anim:nth-child(3) { animation-delay: 1s; }
-
     @keyframes pulse-ring {
         0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0.8; }
         100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
     }
-
-    /* Avatar Panggilan */
     .call-avatar {
-        width: 150px;
-        height: 150px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 4px solid var(--accent);
-        z-index: 2;
-        margin-bottom: 20px;
-        animation: float 3s ease-in-out infinite;
-        box-shadow: 0 0 30px rgba(212, 163, 115, 0.5);
+        width: 150px; height: 150px; border-radius: 50%; object-fit: cover; 
+        border: 4px solid var(--accent); z-index: 2; margin-bottom: 20px;
+        animation: float 3s ease-in-out infinite; box-shadow: 0 0 30px rgba(212, 163, 115, 0.5);
     }
-
     @keyframes float {
         0% { transform: translateY(0px); }
         50% { transform: translateY(-15px); }
         100% { transform: translateY(0px); }
     }
-
-    .call-info {
-        z-index: 2;
-        margin-bottom: 50px;
-    }
+    .call-info { z-index: 2; margin-bottom: 50px; }
     .call-name { font-size: 28px; font-weight: bold; margin-bottom: 10px; }
     .call-status { font-size: 16px; color: #ccc; animation: blink-text 1.5s infinite; }
+    @keyframes blink-text { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-    @keyframes blink-text {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
-    }
-
-    /* Tombol Action Bawah */
     .call-actions {
-        position: absolute;
-        bottom: 60px; 
-        display: flex;
-        gap: 40px;
-        z-index: 2;
-        width: 100%;
-        justify-content: center;
-        padding-bottom: env(safe-area-inset-bottom);
+        position: absolute; bottom: 60px; display: flex; gap: 40px; z-index: 2; 
+        width: 100%; justify-content: center; padding-bottom: env(safe-area-inset-bottom);
     }
-
     .btn-call {
-        width: 70px;
-        height: 70px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 24px;
-        cursor: pointer;
-        border: none;
-        transition: transform 0.2s;
+        width: 70px; height: 70px; border-radius: 50%; display: flex; 
+        align-items: center; justify-content: center; font-size: 24px; 
+        cursor: pointer; border: none; transition: transform 0.2s;
     }
-
     .btn-call:active { transform: scale(0.9); }
-
-    .btn-accept {
-        background: #2ecc71; 
-        color: white;
-        box-shadow: 0 0 20px rgba(46, 204, 113, 0.4);
-    }
-
-    .btn-reject {
-        background: #e74c3c; 
-        color: white;
-        box-shadow: 0 0 20px rgba(231, 76, 60, 0.4);
-    }
+    .btn-accept { background: #2ecc71; color: white; box-shadow: 0 0 20px rgba(46, 204, 113, 0.4); }
+    .btn-reject { background: #e74c3c; color: white; box-shadow: 0 0 20px rgba(231, 76, 60, 0.4); }
 
     @media (max-width: 768px) {
         .call-name { font-size: 24px; }
         .call-avatar { width: 120px; height: 120px; }
         .call-actions { bottom: 40px; }
     }
-        /* =========================================
-    MODAL PREVIEW GAMBAR (WA STYLE)
-    ========================================= */
+
+    /* MODAL PREVIEW GAMBAR */
     #imgPreviewModal {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0.95);
-        z-index: 5000;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
+        display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.95);
+        z-index: 5000; flex-direction: column; justify-content: center; align-items: center;
         backdrop-filter: blur(10px);
+        overflow-y: auto;
     }
 
     .preview-content {
         width: 90%;
         max-width: 400px;
-        text-align: center;
         display: flex;
         flex-direction: column;
         gap: 20px;
+        margin: auto;
     }
 
     #imgPreviewBox {
         max-width: 100%;
-        max-height: 70vh;
-        border-radius: 15px;
+        max-height: 60vh;
+        width: auto;
+        height: auto;
         object-fit: contain;
+        border-radius: 15px;
         box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         border: 2px solid var(--glass-border);
     }
 
     .preview-actions {
         display: flex;
-        gap: 20px;
+        flex-wrap: wrap;
+        gap: 15px;
         justify-content: center;
         width: 100%;
+        padding-bottom: 20px;
     }
 
     .btn-preview {
-        flex: 1;
-        padding: 15px;
+        flex: 1 1 40%;
+        min-width: 120px;
+        padding: 12px;
         border: none;
         border-radius: 12px;
         font-size: 16px;
@@ -611,34 +449,17 @@
         cursor: pointer;
         transition: 0.2s;
     }
+    .btn-preview.cancel { background: #333; color: white; }
+    .btn-preview.send { background: var(--accent); color: black; }
+    .btn-preview:active { transform: scale(0.95); }
 
-    .btn-preview.cancel {
-        background: #333;
-        color: white;
-    }
-
-    .btn-preview.send {
-        background: var(--accent);
-        color: black;
-    }
-    
-    .btn-preview:active {
-        transform: scale(0.95);
-    }
-
-        /* =========================================
-    FITUR SEKALI LIAT (VIEW ONCE)
-    ========================================= */
+    /* FITUR SEKALI LIAT (VIEW ONCE) */
     
     /* Toggle Switch */
     .view-once-container {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px;
-        background: rgba(255,255,255,0.05);
-        border-radius: 10px;
-        cursor: pointer;
+        display: flex; align-items: center; gap: 10px; padding: 10px;
+        background: rgba(255,255,255,0.05); border-radius: 10px; cursor: pointer;
+        width: 100%; justify-content: center;
     }
     .view-once-label { font-size: 12px; color: #ccc; }
 
@@ -647,74 +468,74 @@
         position: relative;
         cursor: pointer;
         overflow: hidden;
+        border-radius: 10px;
+        width: 100%; 
+        max-width: 250px;
     }
     
     /* Efek Blur & Overlay */
     .view-once-blur img {
-        filter: blur(20px); /* Sangat buram */
+        filter: blur(25px); 
         width: 100%;
         display: block;
+        height: auto; 
+        transition: filter 0.3s;
     }
     
     /* Overlay (Tengah Hitam + Mata) */
     .view-once-overlay {
         position: absolute;
         inset: 0;
-        background: rgba(0,0,0,0.7);
+        background: rgba(0,0,0,0.6);
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         color: white;
         border-radius: 10px;
+        z-index: 2;
     }
-    /* =========================================
-    LIGHTBOX GAMBAR (VIEWER FULLSCREEN)
-    ========================================= */
-    #imageLightbox {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0,0,0,0.95);
-        z-index: 6000;
-        justify-content: center;
+    .view-once-overlay i { font-size: 30px; margin-bottom: 5px; }
+    .view-once-overlay div { font-size: 12px; }
+    .view-once-overlay small { font-size: 9px; color: #ff9999; margin-top: 2px; }
+
+    /* Style pesan "Foto telah dibuka" */
+    .view-once-opened-text {
+        padding: 10px;
+        border-radius: 10px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid var(--glass-border);
+        text-align: center;
+        font-size: 14px;
+        color: var(--accent);
+        display: flex;
         align-items: center;
-        flex-direction: column;
+        gap: 8px;
+    }
+
+    /* LIGHTBOX GAMBAR */
+    #imageLightbox {
+        display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+        z-index: 6000; justify-content: center; align-items: center; flex-direction: column;
         cursor: pointer;
     }
     #imageLightbox img {
-        max-width: 90%;
-        max-height: 80vh;
-        border-radius: 10px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        object-fit: contain;
+        max-width: 90%; max-height: 80vh; border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5); object-fit: contain;
     }
     #lightbox-close {
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        color: white;
-        font-size: 30px;
-        cursor: pointer;
-        background: rgba(255,255,255,0.2);
-        border-radius: 50%;
-        width: 40px;
-        height: 40px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        position: absolute; top: 20px; right: 20px; color: white; font-size: 30px;
+        cursor: pointer; background: rgba(255,255,255,0.2); border-radius: 50%;
+        width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
     }
-
 
 </style>
 </head>
 <body>
 
     <div id="toast"></div>
-
-  <!-- GANTI DENGAN FILE ANDA SENDIRI -->
-<audio id="notificationSound" src="note.mp3" preload="auto"></audio>
-<audio id="ringtoneSound" src="night-owl.mp3" preload="auto" loop></audio>
+    <audio id="notificationSound" src="note.mp3" preload="auto"></audio>
+    <audio id="ringtoneSound" src="night-owl.mp3" preload="auto" loop></audio>
 
     <div class="app">
         <div class="sidebar" id="sidebar">
@@ -724,9 +545,7 @@
                     <div id="myName" style="margin-left:12px; font-weight:600; font-size:18px;">...</div>
                 </div>
                 <div style="display:flex; gap:18px;">
-                    <!-- Tombol Notif (Jika gagal auto request) -->
                     <i id="btnEnableNotif" class="fa fa-bell-slash" onclick="requestNotificationPermission()" style="color:#ff5e5e; font-size:18px; cursor:pointer; display:none;" title="Aktifkan Notifikasi"></i>
-                    
                     <i class="fa fa-users" onclick="openCreateGroup()" style="color:var(--accent); font-size:18px; cursor:pointer;"></i>
                     <i class="fa fa-user-plus" onclick="openAddFriend()" style="color:var(--accent); font-size:18px; cursor:pointer;"></i>
                     <i class="fa fa-sign-out-alt" onclick="logout()" style="color:#ff5e5e; font-size:18px; cursor:pointer;"></i>
@@ -781,12 +600,10 @@
             <div class="input-row">
                 <div id="normal-input" style="display:flex; flex:1; align-items:center; gap:10px;">
                     <button id="emojiButton" class="btn-action"><i class="far fa-smile"></i></button>
-                    <!-- Tombol Gambar -->
-    <label for="imgInput" class="btn-action">
-        <i class="far fa-image"></i>
-    </label>
-    <!-- Input File Tersembunyi -->
-    <input type="file" id="imgInput" accept="image/*" style="display:none" onchange="sendImage(this)">
+                    <label for="imgInput" class="btn-action">
+                        <i class="far fa-image"></i>
+                    </label>
+                    <input type="file" id="imgInput" accept="image/*" style="display:none" onchange="sendImage(this)">
                     <input type="text" id="text" placeholder="Ketik pesan..." autocomplete="off">
                 </div>
 
@@ -808,8 +625,7 @@
         </div>
     </div>
 
-    <!-- MODALS DIPINDAHKAN KE SINI (LUAR APP) -->
-
+    <!-- MODALS -->
     <div id="addFriendModal" class="modal">
         <div class="modal-content">
             <h3 style="color:var(--accent); margin-top:0;">Tambah Teman</h3>
@@ -846,52 +662,37 @@
         </div>
     </div>
 
-    <!-- MODAL VIDEO CALL (PURE JITSI ONLY) -->
+    <!-- MODAL VIDEO CALL -->
     <div id="videoCallModal" style="display: none; position: fixed; inset: 0; background: #000; z-index: 10000000; width: 100%; height: 100%;">
-        
-        <!-- Tombol Tutup -->
         <div style="position: absolute; top: 20px; right: 20px; z-index: 10;">
             <button onclick="endVideoCall()" style="background: #ff5e5e; color: white; border: none; padding: 10px 20px; border-radius: 30px; cursor: pointer; font-weight: bold;">
                 <i class="fas fa-phone-slash"></i> Tutup
             </button>
         </div>
-
-        <!-- HANYA CONTAINER JITSI -->
         <div id="jitsi-container" style="width: 100%; height: 100%; display: none;"></div>
     </div>
 
     <!-- OVERLAY PANGGILAN MASUK -->
 <div id="call-overlay" style="display: none;">
-    <!-- Animasi Gelombang Belakang -->
     <div class="call-bg-anim"></div>
     <div class="call-bg-anim"></div>
     <div class="call-bg-anim"></div>
-
-    <!-- Foto Penelepon -->
     <img id="call-overlay-avatar" src="" class="call-avatar">
-
-    <!-- Nama & Status -->
     <div class="call-info">
         <div id="call-overlay-name" class="call-name">Nama Panggilan</div>
         <div class="call-status">Sedang Menelepon...</div>
     </div>
-
-    <!-- Tombol Jawab / Tolak -->
     <div class="call-actions">
-        <button onclick="rejectCall()" class="btn-call btn-reject">
-            <i class="fas fa-phone-slash"></i>
-        </button>
-        <button onclick="acceptCall()" class="btn-call btn-accept">
-            <i class="fas fa-phone"></i>
-        </button>
+        <button onclick="rejectCall()" class="btn-call btn-reject"><i class="fas fa-phone-slash"></i></button>
+        <button onclick="acceptCall()" class="btn-call btn-accept"><i class="fas fa-phone"></i></button>
     </div>
 </div>
 
-    <!-- MODAL PREVIEW GAMBAR (FITUR VIEW ONCE & PREVIEW) -->
+    <!-- MODAL PREVIEW GAMBAR -->
     <div id="imgPreviewModal">
         <div class="preview-content">
-            <div style="font-size: 18px; font-weight: 600;">Lihat Gambar</div>
-            <!-- Container Gambar Preview -->
+            <div style="font-size: 18px; font-weight: 600; color:white;">Lihat Gambar</div>
+            <!-- Container Gambar -->
             <img id="imgPreviewBox" src="" alt="Preview" onerror="this.src=''; this.style.display='none';">
             
             <div class="preview-actions">
@@ -910,7 +711,7 @@
         </div>
     </div>
 
-    <!-- MODAL LIGHTBOX GAMBAR (FIX INFINITE LOOP) -->
+    <!-- MODAL LIGHTBOX GAMBAR -->
     <div id="imageLightbox" onclick="closeLightbox()">
         <div id="lightbox-close"><i class="fas fa-times"></i></div>
         <img id="lightboxImg" src="" onerror="this.src=''; this.style.display='none';">
@@ -978,25 +779,15 @@
     let currentCallRoom = null;
     let currentCallType = null;
     let pendingImageBase64 = null;
-    let isViewOnceEnabled = false; // Variabel baru
+    let isViewOnceEnabled = false;
+    let viewOnceIgnoredKey = null;
         
     // Cek Fokus
-    window.addEventListener('focus', () => {
-        isWindowFocused = true;
-    });
+    window.addEventListener('focus', () => { isWindowFocused = true; });
+    window.addEventListener('blur', () => { isWindowFocused = false; });
 
-    // Cek Blur
-    window.addEventListener('blur', () => {
-        isWindowFocused = false;
-    });
-
-    // --- FUNGSI REQUEST PERMISSION MANUAL ---
     async function requestNotificationPermission() {
-        if (!("Notification" in window)) {
-            alert("Browser ini tidak mendukung notifikasi desktop");
-            return;
-        }
-        
+        if (!("Notification" in window)) { alert("Browser ini tidak mendukung notifikasi desktop"); return; }
         const permission = await Notification.requestPermission();
         if (permission === "granted") {
             showToast("Notifikasi Diaktifkan!");
@@ -1012,13 +803,8 @@
             try {
                 const registration = await navigator.serviceWorker.register('sw.js');
                 console.log('Service Worker terdaftar!', registration);
-                // Force update jika ada versi baru
-                if (registration.waiting) {
-                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-                }
-            } catch (err) {
-                console.error('Gagal registrasi SW:', err);
-            }
+                if (registration.waiting) { registration.waiting.postMessage({ type: 'SKIP_WAITING' }); }
+            } catch (err) { console.error('Gagal registrasi SW:', err); }
         }
     }
 
@@ -1027,32 +813,19 @@
         
         console.log("🚀 [INIT] Starting App...");
         
-        // 1. REQUEST NOTIFICATION PERMISSION
         if ("Notification" in window && Notification.permission === "default") {
             try {
                 const permission = await Notification.requestPermission();
-                if (permission === "granted") {
-                    registerServiceWorker();
-                } else {
-                    const btn = document.getElementById("btnEnableNotif");
-                    if(btn) btn.style.display = "block";
-                }
+                if (permission === "granted") { registerServiceWorker(); }
+                else { const btn = document.getElementById("btnEnableNotif"); if(btn) btn.style.display = "block"; }
             } catch (e) {
                 console.warn("Permintaan notifikasi otomatis diblokir.", e);
-                const btn = document.getElementById("btnEnableNotif");
-                if(btn) btn.style.display = "block";
+                const btn = document.getElementById("btnEnableNotif"); if(btn) btn.style.display = "block";
             }
-        } else if (Notification.permission === "granted") {
-            registerServiceWorker();
-        } else if (Notification.permission === "denied") {
-            const btn = document.getElementById("btnEnableNotif");
-            if(btn) btn.style.display = "block";
-        }
+        } else if (Notification.permission === "granted") { registerServiceWorker(); }
         
-        // 2. UNLOCK AUDIO
         unlockAudioContext();
         
-        // 3. SETUP USER
         db.ref("users/" + currentUser).on("value", s => {
             const d = s.val();
             if(d) {
@@ -1067,160 +840,79 @@
         db.ref("users/" + currentUser + "/online").onDisconnect().set(false);
         db.ref("users/" + currentUser + "/lastSeen").onDisconnect().set(Date.now());
 
-        // 4. LOAD CONTACTS & SETUP
         loadContacts();
         setupEmoji();
         setupTypingListener();
-        
-        console.log("✅ [INIT] App initialization complete");
     }
 
     /* =========================================
-        FUNGSI GROUP
+        GROUP & FRIENDS
         ========================================= */
     function openCreateGroup() { 
         document.getElementById("createGroupModal").style.display = "flex"; 
         document.getElementById("groupNameInput").value = "";
     }
-
-    function closeCreateGroup() { 
-        document.getElementById("createGroupModal").style.display = "none"; 
-    }
-
+    function closeCreateGroup() { document.getElementById("createGroupModal").style.display = "none"; }
     function processCreateGroup() {
         const name = document.getElementById("groupNameInput").value.trim();
-        
-        if(!name) {
-            showToast("Nama grup tidak boleh kosong!");
-            return;
-        }
-
+        if(!name) { showToast("Nama grup tidak boleh kosong!"); return; }
         const groupId = "GROUP_" + Date.now();
-        const groupData = {
-            id: groupId,
-            name: name,
-            admin: currentUser,
-            photo: "https://cdn-icons-png.flaticon.com/512/615/615075.png",
-            createdAt: Date.now()
-        };
-
+        const groupData = { id: groupId, name: name, admin: currentUser, photo: "https://cdn-icons-png.flaticon.com/512/615/615075.png", createdAt: Date.now() };
         db.ref("groups/" + groupId).set(groupData);
         db.ref(`group_members/${groupId}/${currentUser}`).set(true);
-        
-        db.ref(`user_chats/${currentUser}/${groupId}`).set({
-            lastMsg: "Grup baru dibuat",
-            time: Date.now()
-        }).then(() => {
-            showToast("Grup '" + name + "' berhasil dibuat!");
-            closeCreateGroup();
+        db.ref(`user_chats/${currentUser}/${groupId}`).set({ lastMsg: "Grup baru dibuat", time: Date.now() }).then(() => {
+            showToast("Grup '" + name + "' berhasil dibuat!"); closeCreateGroup();
         });
     }
-
-    /* =========================================
-        FUNGSI ADD FRIEND
-        ========================================= */
-    function openAddFriend() { 
-        document.getElementById("addFriendModal").style.display = "flex"; 
-        document.getElementById("friendInput").value = "";
-    }
-
-    function closeAddFriend() { 
-        document.getElementById("addFriendModal").style.display = "none"; 
-    }
-
+    function openAddFriend() { document.getElementById("addFriendModal").style.display = "flex"; document.getElementById("friendInput").value = ""; }
+    function closeAddFriend() { document.getElementById("addFriendModal").style.display = "none"; }
     function processAddFriend() {
         const id = document.getElementById("friendInput").value.trim();
-        
-        if(!id) {
-            showToast("ID Teman tidak boleh kosong!");
-            return;
-        }
-
-        if(id === currentUser) {
-            showToast("Tidak bisa menambahkan diri sendiri!");
-            return;
-        }
-
+        if(!id) { showToast("ID Teman tidak boleh kosong!"); return; }
+        if(id === currentUser) { showToast("Tidak bisa menambahkan diri sendiri!"); return; }
         db.ref("users/" + id).once("value", s => {
             if(s.exists()) {
-                
-                // 1. TAMBAHKAN KE DAFTAR CHAT SAYA (Agar muncul di sidebar saya)
-                db.ref(`user_chats/${currentUser}/${id}`).update({ 
-                    lastMsg: "Kontak baru", 
-                    time: Date.now() 
+                db.ref(`user_chats/${currentUser}/${id}`).update({ lastMsg: "Kontak baru", time: Date.now() });
+                db.ref(`user_chats/${id}/${currentUser}`).update({ lastMsg: "Permintaan pertemanan baru", time: Date.now() }).then(() => {
+                    showToast("Berhasil menambahkan teman!"); closeAddFriend();
                 });
-
-                // 2. TAMBAHKAN KE DAFTAR CHAT TEMAN (Agar muncul di sidebar dia)
-                db.ref(`user_chats/${id}/${currentUser}`).update({ 
-                    lastMsg: "Permintaan pertemanan baru", 
-                    time: Date.now() 
-                }).then(() => {
-                    showToast("Berhasil menambahkan teman!");
-                    closeAddFriend();
-                });
-
-            } else {
-                alert("ID User '" + id + "' tidak ditemukan!");
-            }
+            } else { alert("ID User '" + id + "' tidak ditemukan!"); }
         });
     }
 
     /* =========================================
-        TYPING STATUS LOGIC
+        TYPING & AUDIO
         ========================================= */
     function setupTypingListener() {
         const input = document.getElementById("text");
         input.addEventListener("input", () => {
             if(!currentChatId) return;
-            
             const myDisplayName = document.getElementById("myName").innerText;
-            
             db.ref(`typing/${currentChatId}/${currentUser}`).set(myDisplayName);
-            
             clearTimeout(typingTimeout);
-            typingTimeout = setTimeout(() => {
-                db.ref(`typing/${currentChatId}/${currentUser}`).remove();
-            }, 2000);
+            typingTimeout = setTimeout(() => { db.ref(`typing/${currentChatId}/${currentUser}`).remove(); }, 2000);
         });
     }
-
     function watchTyping(chatId) {
         db.ref(`typing/${chatId}`).on("value", snap => {
             const typers = snap.val();
             const statusEl = document.getElementById("chatStatus");
-            
             if(!typers) {
-                if(isGroup) { 
-                    statusEl.innerText = "Grup Chat"; 
-                    statusEl.style.color = "var(--text-muted)"; 
-                } else { 
-                    updatePartnerOnlineStatus(); 
-                }
+                if(isGroup) { statusEl.innerText = "Grup Chat"; statusEl.style.color = "var(--text-muted)"; } 
+                else { updatePartnerOnlineStatus(); }
                 return;
             }
-
             let otherTypers = Object.keys(typers).filter(uid => uid !== currentUser);
-
             if(otherTypers.length > 0) {
                 statusEl.style.color = "var(--accent)";
-                
-                if(isGroup) {
-                    let names = otherTypers.map(uid => typers[uid]);
-                    statusEl.innerText = `${names.join(", ")} sedang mengetik...`;
-                } else {
-                    statusEl.innerText = "sedang mengetik...";
-                }
+                if(isGroup) { let names = otherTypers.map(uid => typers[uid]); statusEl.innerText = `${names.join(", ")} sedang mengetik...`; }
+                else { statusEl.innerText = "sedang mengetik..."; }
             } else {
-                if(isGroup) {
-                    statusEl.innerText = "Grup Chat";
-                    statusEl.style.color = "var(--text-muted)";
-                } else {
-                    updatePartnerOnlineStatus();
-                }
+                if(isGroup) { statusEl.innerText = "Grup Chat"; statusEl.style.color = "var(--text-muted)"; } 
+                else { updatePartnerOnlineStatus(); }
             }
         });
     }
-
     function updatePartnerOnlineStatus() {
         db.ref("users/" + currentPartnerId).once("value", s => {
             const u = s.val();
@@ -1229,128 +921,58 @@
             st.style.color = u?.online ? "var(--online)" : "var(--text-muted)";
         });
     }
-
     function unlockAudioContext() {
         if (audioContextUnlocked) return;
         const audio = document.getElementById('notificationSound');
         if (audio) {
-            audio.play().then(() => {
-                audio.pause();
-                audio.currentTime = 0;
-                audioContextUnlocked = true;
-                console.log(">>> AUDIO SUDAH DIAKTIFKAN");
-            }).catch(e => {});
+            audio.play().then(() => { audio.pause(); audio.currentTime = 0; audioContextUnlocked = true; }).catch(e => {});
         }
     }
-
-    // Aktifkan saat user klik/touch layar
     document.addEventListener('click', unlockAudioContext, { once: true });
     document.addEventListener('touchstart', unlockAudioContext, { once: true });
 
     /* =========================================
-        NOTIFICATION LOGIC (SPLIT CATEGORIES)
+        NOTIFICATION LOGIC
         ========================================= */
-    
-       function showBrowserNotification(title, body, icon, tag) {
-        // --- GAMBAR HITAM 1x1 PIXEL (DATA URI) ---
+    function showBrowserNotification(title, body, icon, tag) {
         const blackPixel = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
-
-        // --- URL BADGE ---
         const badgeUrl = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-
-        // --- OPTIONS UNTUK FALLBACK (NATIVE NOTIF) ---
         const options = {
-            body: body,
-            icon: icon,
-            badge: badgeUrl, 
-            
-            // PAKAI IMAGE HITAM (HACK DARK MODE IOS)
-            image: blackPixel, 
-
-            vibrate: [200, 100, 200],
-            tag: tag,
-            requireInteraction: true
+            body: body, icon: icon, badge: badgeUrl, image: blackPixel,
+            vibrate: [200, 100, 200], tag: tag, requireInteraction: true
         };
-
-        // --- 1. CARI TAHU SUARA APA YANG DIMAINKAN (RINGTONE/MSG) ---
         let soundType = 'message';
-        if (tag.includes('ringtone') || tag.includes('call')) {
-            soundType = 'ringtone';
-        }
-
-        // --- 2. MAINKAN SUARA MANUAL (WAJIB UNTUK IOS) ---
-        // Di iOS, parameter 'vibrate' sering diabaikan. Jadi kita paksa putar audio HTML kita.
+        if (tag.includes('ringtone') || tag.includes('call')) soundType = 'ringtone';
         playNotificationSound(soundType);
-        
-        console.log(`[NOTIF] Suara Type: ${soundType}. Siap tampilkan notif...`);
 
-        // --- 3. TRY SHOW VIA SERVICE WORKER (BEST PRACTICE) ---
         if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-            
-            const dataPayload = {
-                title: title, 
-                body: body,
-                icon: icon,
-                badge: badgeUrl, 
-                image: blackPixel, // Mengirim background hitam ke SW
-                tag: tag,
-                url: window.location.href
-            };
-
-            navigator.serviceWorker.controller.postMessage({
-                type: 'NOTIFICATION',
-                data: dataPayload
-            });
-            console.log("[NOTIF] Terkirim ke Service Worker");
-        } 
-        // --- 4. FALLBACK: NATIVE NOTIFICATION (JADIKAN UNTUK IOS) ---
-        else if (Notification.permission === "granted") {
-            const finalTitle = title; 
-
+            const dataPayload = { title: title, body: body, icon: icon, badge: badgeUrl, image: blackPixel, tag: tag, url: window.location.href };
+            navigator.serviceWorker.controller.postMessage({ type: 'NOTIFICATION', data: dataPayload });
+        } else if (Notification.permission === "granted") {
             try {
-                const notif = new Notification(finalTitle, options);
-                notif.onclick = () => {
-                    window.focus();
-                    notif.close();
-                };
-            } catch (e) {
-                console.error("Gagal show native notif", e);
-            }
+                const notif = new Notification(title, options);
+                notif.onclick = () => { window.focus(); notif.close(); };
+            } catch (e) { console.error("Gagal show native notif", e); }
         }
     }
+
     /* =========================================
         CONTACTS & LIST
         ========================================= */
-        function loadContacts() {
-        console.log("[LOAD] Memuat contacts (Clean Version)...");
-        
-        // 1. MATIKAN LISTENER LAMA
-        if (contactsListener) {
-            db.ref(`user_chats/${currentUser}`).off('value', contactsListener);
-        }
-
-        // Matikan listeners spesifik
+    function loadContacts() {
+        console.log("[LOAD] Memuat contacts...");
+        if (contactsListener) { db.ref(`user_chats/${currentUser}`).off('value', contactsListener); }
         for (const id in chatListeners) {
-            if (chatListeners[id].badge) {
-                chatListeners[id].badge.off();
-            }
-            if (chatListeners[id].notif) {
-                chatListeners[id].notif.off();
-            }
+            if (chatListeners[id].badge) { chatListeners[id].badge.off(); }
+            if (chatListeners[id].notif) { chatListeners[id].notif.off(); }
         }
         chatListeners = {};
 
-        // 2. LISTENER UTAMA
         const newListener = db.ref(`user_chats/${currentUser}`).on("value", async (snap) => {
             const list = document.getElementById("users");
-            
-            // HAPUS SEMUA VISUAL
             list.innerHTML = ""; 
-
             let items = [];
             let activeIds = [];
-
-            // 3. LOOP & FETCH USER
             const promises = [];
             
             snap.forEach(c => { 
@@ -1366,32 +988,19 @@
                     
                     db.ref(refPath).once("value", uSnap => {
                         const u = uSnap.val();
-                        resolve({
-                            id: id,
-                            info: info,
-                            isGrp: isGrp,
-                            u: u,
-                            chatId: chatId
-                        });
+                        resolve({ id: id, info: info, isGrp: isGrp, u: u, chatId: chatId });
                     });
                 });
                 promises.push(p);
             });
 
-            // 4. TUNGGU SEMUA DATA SELESAI
             const results = await Promise.all(promises);
 
-            // 5. SETUP LISTENER (BADGE & NOTIF)
             results.forEach(item => {
                 const id = item.id;
-                const u = item.u;
-                const isGrp = item.isGrp;
                 const chatId = item.chatId;
-
-                // Init Object
                 if (!chatListeners[id]) chatListeners[id] = { badge: null, notif: null };
 
-                // Badge Listener
                 if (!chatListeners[id].badge) {
                     const unreadRef = db.ref("chats/" + chatId).limitToLast(50).orderByChild("seen").equalTo(false);
                     const badgeHandler = (unreadSnap) => {
@@ -1405,22 +1014,15 @@
                         if(currentEl) {
                             let badgeEl = currentEl.querySelector('.unread-badge');
                             if(count > 0) {
-                                if(!badgeEl) {
-                                    badgeEl = document.createElement("div");
-                                    badgeEl.className = "unread-badge";
-                                    currentEl.appendChild(badgeEl);
-                                }
+                                if(!badgeEl) { badgeEl = document.createElement("div"); badgeEl.className = "unread-badge"; currentEl.appendChild(badgeEl); }
                                 badgeEl.innerText = count;
-                            } else {
-                                if(badgeEl) badgeEl.remove();
-                            }
+                            } else { if(badgeEl) badgeEl.remove(); }
                         }
                     };
                     unreadRef.on("value", badgeHandler);
                     chatListeners[id].badge = unreadRef; 
                 }
                 
-                // Notif Listener
                 if (!chatListeners[id].notif) {
                     const notifRef = db.ref("chats/" + chatId).limitToLast(20);
                     const notifHandler = (msgSnap) => {
@@ -1431,7 +1033,8 @@
                         if ((Date.now() - m.time) > 20000) return;
                         if (currentChatId === chatId) return;
 
-                        let notifTitle = isGrp ? (u?.name || "Grup") : (u?.username || "Teman");
+                        const isGrp = item.isGrp;
+                        let notifTitle = isGrp ? (item.u?.name || "Grup") : (item.u?.username || "Teman");
                         let notifBody = "";
                         let notifIcon = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; 
                         let soundType = 'message';
@@ -1443,7 +1046,7 @@
                             notifBody = (callType === 'audio') ? "📞 Panggilan Suara Masuk..." : "📹 Panggilan Video Masuk...";
                             notifIcon = (callType === 'audio') ? "https://cdn-icons-png.flaticon.com/512/5974/5974637.png" : "https://cdn-icons-png.flaticon.com/512/3033/3033141.png"; 
                             soundType = 'ringtone';
-                            showCallOverlay(roomName, callType, notifTitle, u?.photo);
+                            showCallOverlay(roomName, callType, notifTitle, item.u?.photo);
                         } else if (m.text.startsWith("IMG:")) {
                             notifBody = "📷 Mengirim Gambar...";
                         } else if (m.text.startsWith("TYPE:VN:")) {
@@ -1460,21 +1063,16 @@
                 }
             });
 
-            // 6. SORTING (HANYA BERDASARKAN WAKU)
-            // Terbaru (Waktu besar) di awal array -> di atas
-            // Lama (Waktu kecil) di akhir array -> di bawah
             results.sort((a, b) => b.info.time - a.info.time);
 
-            // 7. RENDER (APPEND KE LAYAR)
             results.forEach(item => {
                 const id = item.id;
                 const u = item.u;
                 const isGrp = item.isGrp;
                 
-                // Create DOM
                 let div = document.createElement("div");
                 div.id = `contact-${id}`; 
-                div.className = `user`; // Tidak ada class 'pinned'
+                div.className = `user`; 
                 div.onclick = (e) => {
                     if (e.target.tagName !== 'IMG') { 
                         openChat(id, u?.photo || '', u?.name || u?.username || id, isGrp);
@@ -1491,25 +1089,16 @@
                     </div>
                 `;
                 setupHoldListener(div, id);
-
-                // Append. Karena array sudah di-sort (Terbaru di index 0), append akan menaruhnya paling atas.
                 list.appendChild(div);
             });
 
-            // 8. HAPUS KONTAK TIDAK AKTIF
             const existingDivs = document.querySelectorAll('.user');
             existingDivs.forEach(div => {
                 const divId = div.id.replace('contact-', '');
                 if (!activeIds.includes(divId)) {
                     if (chatListeners[divId]) {
-                        if (chatListeners[divId].badge) {
-                            chatListeners[divId].badge.off();
-                            chatListeners[divId].badge = null;
-                        }
-                        if (chatListeners[divId].notif) {
-                            chatListeners[divId].notif.off();
-                            chatListeners[divId].notif = null;
-                        }
+                        if (chatListeners[divId].badge) { chatListeners[divId].badge.off(); chatListeners[divId].badge = null; }
+                        if (chatListeners[divId].notif) { chatListeners[divId].notif.off(); chatListeners[divId].notif = null; }
                         delete chatListeners[divId];
                     }
                     div.remove();
@@ -1519,89 +1108,55 @@
             contactsListener = newListener;
         });
     }
+
     /* =========================================
-        CALL OVERLAY FUNCTIONS
+        CALL OVERLAY
         ========================================= */
     function showCallOverlay(roomName, type, name, photoUrl) {
         const overlay = document.getElementById("call-overlay");
         const avatar = document.getElementById("call-overlay-avatar");
         const nameEl = document.getElementById("call-overlay-name");
-
-        // Set Data
         currentCallRoom = roomName;
         currentCallType = type;
         nameEl.innerText = name;
         avatar.src = photoUrl || (type === 'video' ? "https://cdn-icons-png.flaticon.com/512/3033/3033141.png" : "https://cdn-icons-png.flaticon.com/512/5974/5974637.png");
-
-        // Tampilkan Overlay
         overlay.style.display = "flex";
-        
-        // Pastikan Ringtone diputar
         playNotificationSound('ringtone');
     }
-
     function hideCallOverlay() {
         document.getElementById("call-overlay").style.display = "none";
         const ringtone = document.getElementById("ringtoneSound");
-        if(ringtone) {
-            ringtone.pause();
-            ringtone.currentTime = 0;
-        }
+        if(ringtone) { ringtone.pause(); ringtone.currentTime = 0; }
     }
-
     function acceptCall() {
         if (currentCallRoom && currentCallType) {
             hideCallOverlay();
-            // Buka Jitsi langsung
             joinVideoCall(currentCallRoom, currentCallType);
-            
-            // Kirim pesan status (opsional)
-            // pushMsg("STATUS:CALL_ACCEPTED"); 
         }
     }
-
     function rejectCall() {
         hideCallOverlay();
         showToast("Panggilan ditolak");
-        
-        // Opsional: Kirim notifikasi balasan ke database bahwa panggilan ditolak
-        // if (currentChatId) {
-        //     pushMsg("STATUS:CALL_REJECTED");
-        // }
     }
 
     /* =========================================
-        MESSAGING CORE
+        MESSAGING CORE & VIEW ONCE
         ========================================= */
-      function openChat(pId, photo, name, grp = false) {
-        // 1. MATIKAN LISTENER CHAT LAMA (Hanya sekali)
-        if (activeChatRef) {
-            activeChatRef.off();
-            console.log("Koneksi chat lama diputus.");
-        }
-
-        // 2. MATIKAN RINGTONE
+    function openChat(pId, photo, name, grp = false) {
+        if (activeChatRef) { activeChatRef.off(); }
+        
         const ringtone = document.getElementById('ringtoneSound');
-        if(ringtone) {
-            ringtone.pause();
-            ringtone.currentTime = 0;
-        }
+        if(ringtone) { ringtone.pause(); ringtone.currentTime = 0; }
 
-        // 3. SET VARIABEL CHAT
         currentPartnerId = pId;
         isGroup = grp;
         currentChatId = grp ? pId : [currentUser, pId].sort().join("_");
-        
-        // 4. RESET VARIABEL GLOBAL (PENTING!)
-        // Supaya saat pindah chat, flag "View Once" tidak ikut terbawa
-        viewOnceIgnoredKey = null;
+        viewOnceIgnoredKey = null; // Reset flag
         selectedMsgId = null;
         selectedMsgData = null;
 
-        // 5. SET REFERENCE LISTENER BARU
         activeChatRef = db.ref("chats/" + currentChatId).limitToLast(50);
 
-        // 6. SETUP UI CHAT
         document.getElementById("emojiPanel").style.display = "none";
         if (window.innerWidth <= 768) document.getElementById("sidebar").classList.add("hidden");
         document.getElementById("welcome-screen").style.display = "none";
@@ -1615,7 +1170,7 @@
         const msgsDiv = document.getElementById("msgs");
         msgsDiv.innerHTML = "";
 
-        // 7. LISTENER: PESAN BARU (child_added)
+        // Listener pesan baru
         activeChatRef.on("child_added", snap => {
             const m = snap.val();
             if(!m) return;
@@ -1623,22 +1178,19 @@
             msgsDiv.scrollTop = msgsDiv.scrollHeight;
             
             if (m.from !== currentUser && !m.seen) {
-                db.ref("chats/" + currentChatId + "/" + snap.key).update({ seen: true })
-                    .catch(e => console.log("Gagal update seen:", e));
+                db.ref("chats/" + currentChatId + "/" + snap.key).update({ seen: true }).catch(e => console.log("Gagal update seen:", e));
             }
         });
 
-        // 8. LISTENER: PERUBAHAN PESAN (child_changed)
-        // Disini kita tempatkan logika "View Once" agar tidak auto-render delete
+        // Listener perubahan pesan (PENTING UNTUK VIEW ONCE)
         activeChatRef.on("child_changed", snap => {
             const key = snap.key;
             
-            // --- LOGIKA VIEW ONCE ---
-            // Jika perubahan terjadi pada pesan "Sekali Lihat" yang baru saja kita buka...
+            // LOGIKA VIEW ONCE: Jangan render ulang jika ini adalah pesan yang baru saja kita "buka"
             if (key === viewOnceIgnoredKey) {
                 viewOnceIgnoredKey = null; // Reset flag
                 console.log("[VIEW ONCE] Menghindari auto-render delete.");
-                return; // KELUAR (Jangan render ulang pesan deleted ini)
+                return; // KELUAR
             }
 
             // Render ulang pesan biasa (misal: edit pesan, atau pesan lain)
@@ -1649,7 +1201,6 @@
             }
         });
 
-        // 9. SETUP STATUS & TYPING
         const typingRef = db.ref(`typing/${currentChatId}`);
         watchTyping(currentChatId);
 
@@ -1665,88 +1216,43 @@
             });
         }
     }
-    function startJitsi(type) {
-        if (!currentChatId) {
-            showToast("Buka chat dulu!");
-            return;
-        }
 
+    function startJitsi(type) {
+        if (!currentChatId) { showToast("Buka chat dulu!"); return; }
         const roomName = type === 'video' ? `Video_${Date.now()}` : `Audio_${Date.now()}`;
         pushMsg(`CALL_JITSI:${type}:${roomName}`);
-        
         joinVideoCall(roomName, type);
     }
 
     function joinVideoCall(channelName, type) {
         document.getElementById("videoCallModal").style.display = "block";
         document.getElementById("jitsi-container").style.display = "block";
-
         const myName = document.getElementById("myName").innerText || "User";
-
         const options = {
-            roomName: channelName,
-            width: "100%",
-            height: "100%",
-            parentNode: document.querySelector('#jitsi-container'),
-            configOverwrite: {
-                startWithAudioMuted: false,
-                startWithVideoMuted: false,
-                prejoinPageEnabled: false,
-                disableDeepLinking: true,
-                startWithScreenSharing: false,
-                startWithTileView: false,
-            },
-            interfaceConfigOverwrite: {
-                SHOW_JITSI_WATERMARK: false,
-                SHOW_WATERMARK_FOR_GUESTS: false,
-                DEFAULT_BACKGROUND: '#000',
-            },
-            userInfo: {
-                displayName: myName
-            }
+            roomName: channelName, width: "100%", height: "100%", parentNode: document.querySelector('#jitsi-container'),
+            configOverwrite: { startWithAudioMuted: false, startWithVideoMuted: false, prejoinPageEnabled: false, disableDeepLinking: true, startWithScreenSharing: false, startWithTileView: false },
+            interfaceConfigOverwrite: { SHOW_JITSI_WATERMARK: false, SHOW_WATERMARK_FOR_GUESTS: false, DEFAULT_BACKGROUND: '#000' },
+            userInfo: { displayName: myName }
         };
-
         window.jitsiApi = new JitsiMeetExternalAPI("meet.jit.si", options);
-
         window.jitsiApi.addEventListeners({
-            readyToClose: function() {
-                endVideoCall();
-            },
-            videoConferenceJoined: function() {
-                console.log("Jitsi: Langsung masuk!", channelName);
-            },
-            videoLeft: function() {
-                console.log("Seseorang keluar");
-            },
-            participantLeft: function() {
-                console.log("Seseorang berhenti");
-            }
+            readyToClose: function() { endVideoCall(); },
+            videoConferenceJoined: function() { console.log("Jitsi: Masuk!", channelName); }
         });
     }
 
     function endVideoCall() {
         if (window.jitsiApi) {
-            try {
-                window.jitsiApi.dispose();
-                window.jitsiApi = null;
-            } catch (e) {
-                console.error("Gagal dispose Jitsi", e);
-            }
+            try { window.jitsiApi.dispose(); window.jitsiApi = null; } catch (e) { console.error("Gagal dispose Jitsi", e); }
         }
-
         const ringtoneSound = document.getElementById("ringtoneSound");
-        if (ringtoneSound) {
-            ringtoneSound.pause();
-            ringtoneSound.currentTime = 0;
-        }
-
+        if (ringtoneSound) { ringtoneSound.pause(); ringtoneSound.currentTime = 0; }
         document.getElementById("jitsi-container").style.display = "none";
         document.getElementById("videoCallModal").style.display = "none";
-        
         showToast("Panggilan berakhir");
     }
 
-       function renderMessage(m, key) {
+    function renderMessage(m, key) {
         if (document.getElementById("msg-wrap-" + key)) return;
 
         const isMe = m.from === currentUser;
@@ -1758,9 +1264,7 @@
         
         wrap.oncontextmenu = (e) => {
             e.preventDefault();
-            if (typeof openContextMenu === "function") {
-                openContextMenu(e, key, m);
-            }
+            if (typeof openContextMenu === "function") { openContextMenu(e, key, m); }
         };
 
         wrap.addEventListener('touchstart', (e) => {
@@ -1770,11 +1274,7 @@
             if (touchTimer) clearTimeout(touchTimer);
             touchTimer = setTimeout(() => {
                 if (typeof openContextMenu === "function") {
-                    openContextMenu({
-                        clientX: touchStartX,
-                        clientY: touchStartY,
-                        preventDefault: () => {}
-                    }, key, m);
+                    openContextMenu({ clientX: touchStartX, clientY: touchStartY, preventDefault: () => {} }, key, m);
                 }
             }, 600);
         }, { passive: false });
@@ -1784,16 +1284,10 @@
             const touch = e.touches[0];
             const moveX = Math.abs(touch.clientX - touchStartX);
             const moveY = Math.abs(touch.clientY - touchStartY);
-            if (moveX > 10 || moveY > 10) {
-                clearTimeout(touchTimer);
-                touchTimer = null;
-            }
+            if (moveX > 10 || moveY > 10) { clearTimeout(touchTimer); touchTimer = null; }
         }, { passive: false });
 
-        wrap.addEventListener('touchend', () => {
-            clearTimeout(touchTimer);
-            touchTimer = null;
-        });
+        wrap.addEventListener('touchend', () => { clearTimeout(touchTimer); touchTimer = null; });
 
         let forwardHtml = m.forwarded ? `<div class="forward-tag" style="font-size:10px; opacity:0.6; margin-bottom:2px;"><i class="fa fa-share"></i> Diteruskan</div>` : "";
         let replyHtml = "";
@@ -1807,74 +1301,75 @@
 
         let content = "";
         if (m.deleted) {
-            content = `<div class="msg deleted" style="font-style:italic; opacity:0.7;">🚫 Pesan telah dihapus</div>`;
+            // Jika deleted dan text berisi "Foto telah dibuka"
+            if (m.text.includes("Foto telah dibuka") || m.text.includes("👁️ Foto telah dibuka")) {
+                content = `<div class="view-once-opened-text"><i class="fas fa-eye-slash"></i> Foto telah dibuka</div>`;
+            } else {
+                content = `<div class="msg deleted" style="font-style:italic; opacity:0.7;">🚫 Pesan telah dihapus</div>`;
+            }
         } else {
             let textBody = "";
             try {
-                          // GANTI BAGIAN INI DI DALAM renderMessage//
-            if (m.text.startsWith("IMG:")) {
-                let url = "";
-                try {
-                    url = decryptData(m.text.replace("IMG:", ""));
-                } catch(e) { url = null; }
+                if (m.text.startsWith("IMG:")) {
+                    let url = "";
+                    try { url = decryptData(m.text.replace("IMG:", "")); } catch(e) { url = null; }
 
-                // --- PENGECEKAN KESALAHAN ---
-                // 1. URL kosong
-                // 2. URL berisi teks error (dekripsi gagal)
-                // 3. URL terlalu pendek (Base64 asli pasti panjang, <100 kemungkinan error)
-                if (!url || url === "" || url.includes("[Pesan Terenkripsi]") || url.length < 100) {
-                    
-                    // TAMPILKAN KOTAK MERAH (HANYA HTML/CSS, TANPA GAMBAR)
-                    textBody = `
-                        <div style="background:#ffcccc; color:#990000; padding:15px; border-radius:10px; text-align:center; border:1px solid #ff9999;">
-                            <i class="fas fa-exclamation-triangle" style="font-size:24px; margin-bottom:5px;"></i>
-                            <div style="font-weight:bold;">Gambar Error</div>
-                            <div style="font-size:11px; opacity:0.8;">Gagal memuat data gambar.</div>
-                        </div>
-                    `;
-                } 
-                // --- LOGIKA VIEW ONCE ---
-                else if (m.viewOnce) {
-                    // Tampilan Sekali Lihat (Buram + Overlay)
-                    textBody = `
-                        <div class="view-once-blur" onclick="openViewOnceMessage('${key}')">
-                            <img src="${url}" style="width:100%; display:block; filter:blur(25px);">
-                            <div class="view-once-overlay">
-                                <i class="fas fa-eye" style="font-size:30px; margin-bottom:5px;"></i>
-                                <div style="font-size:12px;">Klik untuk melihat</div>
-                                <div style="font-size:10px; color:#ff9999;">(Otomatis terhapus)</div>
+                    if (!url || url === "" || url.includes("[Pesan Terenkripsi]") || url.length < 100) {
+                        textBody = `
+                            <div style="background:#ffcccc; color:#990000; padding:15px; border-radius:10px; text-align:center; border:1px solid #ff9999;">
+                                <i class="fas fa-exclamation-triangle" style="font-size:24px; margin-bottom:5px;"></i>
+                                <div style="font-weight:bold;">Gambar Error</div>
+                                <div style="font-size:11px; opacity:0.8;">Gagal memuat data gambar.</div>
                             </div>
-                        </div>
-                    `;
-                } else {
-                    // Tampilan Gambar Normal (PAKAI LIGHTBOX)
-                    textBody = `<img src="${url}" onclick="openLightbox('${url}')" style="max-width:100%; border-radius:10px; cursor:pointer;">`;
-                }
-            }
-                else if (m.text.startsWith("TYPE:VN:")) {
+                        `;
+                    } else if (m.viewOnce) {
+                        // --- LOGIKA VIEW ONCE (DIPERBARUI) ---
+                        // Jika saya pengirim (isMe): Saya tidak bisa melihatnya.
+                        // Jika saya penerima (!isMe): Saya bisa melihatnya (klik).
+                        
+                        if (isMe) {
+                            // Tampilan untuk PENGIRIM (Icon + Teks)
+                            textBody = `
+                                <div class="view-once-opened-text">
+                                    <i class="fas fa-eye-slash"></i> 
+                                    <div style="text-align:left; flex:1;">
+                                        <div style="font-weight:bold; font-size:14px;">Foto Sekali Lihat</div>
+                                        <div style="font-size:11px; opacity:0.7;">Teman chat Anda bisa melihatnya sekali.</div>
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            // Tampilan untuk PENERIMA (Blur + Overlay Klik)
+                            textBody = `
+                                <div class="view-once-blur" onclick="openViewOnceMessage('${key}')">
+                                    <img src="${url}">
+                                    <div class="view-once-overlay">
+                                        <i class="fas fa-eye"></i>
+                                        <div>Klik untuk melihat</div>
+                                        <small>(Otomatis terhapus)</small>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    } else {
+                        // Tampilan Gambar Normal
+                        textBody = `<img src="${url}" onclick="openLightbox('${url}')" style="max-width:100%; border-radius:10px; cursor:pointer;">`;
+                    }
+                } else if (m.text.startsWith("TYPE:VN:")) {
                     const url = decryptData(m.text.replace("TYPE:VN:", ""));
                     textBody = `<div class="vn-container" style="display:flex; align-items:center; gap:8px; padding:5px 0;"><audio src="${url}" controls class="vn-player" style="max-width:200px; height:30px;"></audio></div>`;
-                } 
-                else if (m.text.startsWith("CALL_JITSI:")) {
+                } else if (m.text.startsWith("CALL_JITSI:")) {
                     const p = m.text.split(":");
                     const roomName = p[2];
                     const callType = p[1]; 
-                    
-                    let icon = "fa-video";     
-                    let textLabel = "Panggilan Video"; 
-
-                    if (callType === 'audio') {
-                        icon = "fa-phone-alt"; 
-                        textLabel = "Panggilan Suara"; 
-                    }
-                    
+                    let icon = "fa-video"; let textLabel = "Panggilan Video"; 
+                    if (callType === 'audio') { icon = "fa-phone-alt"; textLabel = "Panggilan Suara"; }
                     textBody = `
-                        <div class="call-msg" onclick="joinVideoCall('${roomName}', '${callType}')" style="cursor:pointer; text-align:center; background: rgba(212, 163, 115, 0.1); padding: 15px; border-radius: 15px; margin: 5px 0; color: var(--accent); border: 1 dashed var(--accent);">
+                        <div class="call-msg" onclick="joinVideoCall('${roomName}', '${callType}')" style="cursor:pointer; text-align:center; background: rgba(212, 163, 115, 0.1); padding: 15px; border-radius: 15px; margin: 5px 0; color: var(--accent); border: 1px dashed var(--accent);">
                             <i class="fas ${icon}"></i><br>
                             <small>${textLabel} (Klik Gabung)</small>
                         </div>`;
-                }
-                else {
+                } else {
                     textBody = `<span>${decryptData(m.text)}</span>`;
                 }
             } catch (e) {
@@ -1899,13 +1394,9 @@
             if (typeof isGroup !== 'undefined' && isGroup) {
                 const seenByCount = m.seenBy ? Object.keys(m.seenBy).length : 0;
                 const totalMembers = typeof groupMembersCount !== 'undefined' ? groupMembersCount[currentChatId] || 2 : 2; 
-                if (seenByCount >= totalMembers) {
-                    statusIcons = `<span style="color:var(--accent); font-weight:bold;">✓✓</span>`;
-                } else if (seenByCount > 1) {
-                    statusIcons = `✓✓`;
-                } else {
-                    statusIcons = `✓`;
-                }
+                if (seenByCount >= totalMembers) { statusIcons = `<span style="color:var(--accent); font-weight:bold;">✓✓</span>`; } 
+                else if (seenByCount > 1) { statusIcons = `✓✓`; } 
+                else { statusIcons = `✓`; }
             } else {
                 statusIcons = m.seen ? `<span style="color:var(--accent); font-weight:bold;">✓✓</span>` : `✓`;
             }
@@ -1927,16 +1418,64 @@
 
         if (!isMe && typeof currentChatId !== 'undefined' && currentChatId) {
             if (typeof isGroup !== 'undefined' && isGroup) {
-                if (!m.seenBy || !m.seenBy[currentUser]) {
-                    db.ref(`chats/${currentChatId}/${key}/seenBy/${currentUser}`).set(true);
-                }
+                if (!m.seenBy || !m.seenBy[currentUser]) { db.ref(`chats/${currentChatId}/${key}/seenBy/${currentUser}`).set(true); }
             } else {
-                if (!m.seen) {
-                    db.ref("chats/" + currentChatId + "/" + key).update({ seen: true });
-                }
+                if (!m.seen) { db.ref("chats/" + currentChatId + "/" + key).update({ seen: true }); }
             }
         }
     }
+
+    /* =========================================
+        OPEN VIEW ONCE MESSAGE (UPDATE)
+        ========================================= */
+    function openViewOnceMessage(key) {
+        if (!currentChatId) return;
+
+        // 1. Ambil data pesan dari DB
+        db.ref("chats/" + currentChatId + "/" + key).once("value", snap => {
+            const m = snap.val();
+            if (!m || !m.viewOnce) return;
+
+            const msgEl = document.getElementById("msg-wrap-" + key);
+            if (msgEl) {
+                const url = decryptData(m.text.replace("IMG:", ""));
+                
+                // 2. UPDATE VISUAL TAMPILAN (Tunjukkan gambar jernih)
+                const contentDiv = msgEl.querySelector('.msg');
+                if (contentDiv) {
+                    // Tampilkan gambar jernih di dalam chat sebentar
+                    contentDiv.innerHTML = `
+                        <img src="${url}" onclick="openLightbox('${url}')" style="max-width:100%; border-radius:10px; cursor:pointer;">
+                        <div style="font-size:10px; text-align:center; opacity:0.6; margin-top:5px;">Gambar telah dilihat</div>
+                        ${m.edited ? `<small style="opacity:0.5; font-size:9px; margin-left:5px;">(diedit)</small>` : ""}
+                        ${m.forwarded ? `<div class="forward-tag" style="font-size:10px; opacity:0.6; margin-bottom:2px;"><i class="fa fa-share"></i> Diteruskan</div>` : ""}
+                    `;
+                    
+                    // Hapus style blur/overlay jika ada
+                    if (msgEl.querySelector('.view-once-blur')) {
+                        const blurWrap = msgEl.querySelector('.view-once-blur');
+                        blurWrap.classList.remove('view-once-blur'); 
+                        blurWrap.removeAttribute('onclick');
+                        blurWrap.removeAttribute('style');
+                    }
+                }
+
+                // 3. SET FLAG AGAR LISTENER TIDAK MENGHAPUS
+                viewOnceIgnoredKey = key;
+
+                // 4. HAPUS PESAN DARI DATABASE (GANTI TEXT)
+                db.ref("chats/" + currentChatId + "/" + key).update({
+                    deleted: true,
+                    // PERUBAHAN DISINI: Teks diganti jadi indikator "Foto telah dibuka"
+                    text: encryptData("👁️ Foto telah dibuka"),
+                    replyTo: null,
+                    forwarded: null,
+                    viewOnce: false
+                });
+            }
+        });
+    }
+        
     /* =========================================
         DELETE ACTIONS
         ========================================= */
@@ -1974,9 +1513,8 @@
     function closeDeleteSheet() { document.getElementById("deleteSheet").style.display = "none"; }
 
     /* =========================================
-        SEND FUNCTIONS
+        SEND FUNCTIONS & IMAGE PREVIEW
         ========================================= */
-
     function openContextMenu(e, key, data) {
         if(data.deleted) return;
         selectedMsgId = key;
@@ -2008,7 +1546,6 @@
     function handleForward() {
         document.getElementById("msgMenu").style.display = "none";
         const targetId = prompt("Masukkan User ID atau Group ID tujuan:");
-        
         if (!targetId || targetId.trim() === "") return;
         executeForward(targetId.trim());
     }
@@ -2028,7 +1565,6 @@
         db.ref("chats/" + targetChatId).push(forwardData)
             .then(() => {
                 showToast("Pesan berhasil diteruskan ke " + targetId);
-                
                 const summary = { lastMsg: "➡️ Pesan diteruskan", time: Date.now() };
                 db.ref(`user_chats/${currentUser}/${targetId}`).update(summary);
                 if(!isGrp) db.ref(`user_chats/${targetId}/${currentUser}`).update(summary);
@@ -2040,7 +1576,6 @@
     }
 
     function closeForwardModal() { document.getElementById("forwardModal").style.display = "none"; }
-
     function handleCopy() {
         const txt = decryptData(selectedMsgData.text);
         navigator.clipboard.writeText(txt);
@@ -2049,19 +1584,11 @@
 
     function handleReply() {
         document.getElementById("msgMenu").style.display = "none";
-        
         if (!selectedMsgData) return;
-
-        replyData = {
-            id: selectedMsgId, 
-            user: selectedMsgData.from,
-            text: selectedMsgData.text 
-        };
-
+        replyData = { id: selectedMsgId, user: selectedMsgData.from, text: selectedMsgData.text };
         document.getElementById("reply-preview").style.display = "block";
         document.getElementById("reply-user").innerText = (replyData.user === currentUser) ? "Anda" : replyData.user;
         document.getElementById("reply-text").innerText = decryptData(replyData.text);
-        
         document.getElementById("text").focus();
     }
 
@@ -2069,16 +1596,10 @@
         const targetEl = document.getElementById("msg-wrap-" + msgId);
         if (targetEl) {
             targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            
             targetEl.style.transition = "background 0.5s";
             targetEl.style.backgroundColor = "rgba(212, 163, 115, 0.4)";
-            
-            setTimeout(() => {
-                targetEl.style.backgroundColor = "transparent";
-            }, 1500);
-        } else {
-            showToast("Pesan asli sudah terlalu lama atau dihapus");
-        }
+            setTimeout(() => { targetEl.style.backgroundColor = "transparent"; }, 1500);
+        } else { showToast("Pesan asli sudah terlalu lama atau dihapus"); }
     }
 
     function cancelReply() {
@@ -2092,7 +1613,8 @@
         document.getElementById("text").focus();
         showToast("Mode Edit Aktif");
     }
-    // 1. GANTI FUNGSI sendImage
+
+    // 1. Gambar Dipilih (Compress & Simpan ke Pending)
     async function sendImage(input) {
         if(!input.files[0]) return;
         console.log("Gambar dipilih. Mengompres...");
@@ -2103,60 +1625,58 @@
             const img = new Image();
             img.src = e.target.result;
             img.onload = function() {
-                // Kompresi Gambar ke Canvas
                 const canvas = document.createElement('canvas');
                 const MAX_WIDTH = 800;
                 const scale = MAX_WIDTH / img.width;
                 canvas.width = MAX_WIDTH;
                 canvas.height = img.height * scale;
                 canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-                
-                // SIMPAN KE VARIABEL TEMPORER
                 pendingImageBase64 = canvas.toDataURL('image/jpeg', 0.7);
-                
-                // TAMPILKAN MODAL PREVIEW
                 showImagePreview(pendingImageBase64);
             };
         };
     }
 
-    // 2. TAMBAHKAN 3 FUNGSI BARU INI
+    // 2. Tampilkan Modal Preview
     function showImagePreview(base64String) {
         const modal = document.getElementById("imgPreviewModal");
         const imgBox = document.getElementById("imgPreviewBox");
-        
         imgBox.src = base64String;
         modal.style.display = "flex";
     }
 
+    // 3. Batal Kirim
     function cancelSendImage() {
-        // Bersihkan pending image
         pendingImageBase64 = null;
-        
-        // Tutup Modal
         document.getElementById("imgPreviewModal").style.display = "none";
-        
-        // Reset Input File
         document.getElementById("imgInput").value = "";
-        
         console.log("Preview dibatalkan.");
     }
+
+    // 4. Toggle View Once (UI Only)
+    function toggleViewOnce() {
+        isViewOnceEnabled = !isViewOnceEnabled;
+        const icon = document.getElementById("viewOnceIcon");
+        const label = document.getElementById("viewOnceLabel");
+        if (isViewOnceEnabled) {
+            icon.className = "fas fa-eye-slash"; icon.style.color = "#ff5e5e";
+            label.style.color = "#ff5e5e";
+        } else {
+            icon.className = "far fa-eye"; icon.style.color = "#ccc";
+            label.style.color = "#ccc";
+        }
+    }
+
+    // 5. Konfirmasi Kirim
     function confirmSendImage() {
         if (!pendingImageBase64) return;
-        
-        // Simpan status viewOnce ke database
         const msgObj = {
             from: currentUser,
             text: "IMG:" + encryptData(pendingImageBase64),
             time: Date.now(),
             seenBy: { [currentUser]: true }
         };
-
-        // TAMBAHKAN INI: Jika toggle aktif
-        if (isViewOnceEnabled) {
-            msgObj.viewOnce = true;
-        }
-        
+        if (isViewOnceEnabled) { msgObj.viewOnce = true; }
         if (typeof replyData !== 'undefined' && replyData) msgObj.replyTo = replyData;
         
         db.ref("chats/" + currentChatId).push(msgObj).then(() => {
@@ -2165,22 +1685,16 @@
         });
     }
 
-    // Fungsi helper untuk menutup modal (gabungkan reset)
     function closeSendImagePreview() {
         document.getElementById("imgPreviewModal").style.display = "none";
         document.getElementById("imgInput").value = "";
         pendingImageBase64 = null;
-        isViewOnceEnabled = false; // Reset toggle
-        // Reset icon tampilan normal
+        isViewOnceEnabled = false;
         const icon = document.getElementById("viewOnceIcon");
         const label = document.getElementById("viewOnceLabel");
-        icon.className = "far fa-eye"; 
-        icon.style.color = "#ccc";
-        label.style.color = "#ccc";
+        icon.className = "far fa-eye"; icon.style.color = "#ccc"; label.style.color = "#ccc";
     }
 
-    // 3. UPDATE FUNGSI send()
-    // Kita tambahkan cek apakah ada 'pendingImageBase64' atau 'vnBlob'
     async function send() {
         const textInput = document.getElementById("text");
         if (!textInput || !currentChatId) return; 
@@ -2191,7 +1705,7 @@
             return;
         }
 
-        // CEK 2: Jika ada Voice Note (Fitur VN lama)
+        // CEK 2: Jika ada Voice Note
         const val = textInput.value.trim();
 
         if (typeof vnBlob !== 'undefined' && vnBlob) {
@@ -2206,12 +1720,9 @@
                     time: Date.now(),
                     seenBy: { [currentUser]: true } 
                 };
-                
                 if (typeof replyData !== 'undefined' && replyData) msgObj.replyTo = replyData;
-                
                 db.ref("chats/" + currentChatId).push(msgObj);
                 updateSummary("🎵 Voice Note");
-                
                 vnBlob = null;
                 textInput.value = "";
                 textInput.readOnly = false;
@@ -2220,7 +1731,7 @@
             return;
         }
 
-        // LOGIKA PESAN TEKS (Edit / Baru) SAMA SEPERTI SEBELUMNYA
+        // LOGIKA PESAN TEKS (Edit / Baru)
         if (typeof isEditing !== 'undefined' && isEditing) {
             if (!val) return;
             db.ref(`chats/${currentChatId}/${selectedMsgId}`).update({
@@ -2231,9 +1742,7 @@
                 textInput.value = "";
                 showToast("Pesan diperbarui");
             });
-        } 
-        
-        else {
+        } else {
             if (!val) return;
             const msgObj = {
                 from: currentUser,
@@ -2241,13 +1750,8 @@
                 time: Date.now(),
                 seenBy: { [currentUser]: true } 
             };
-            
             msgObj.seen = false;
-            
-            if (typeof replyData !== 'undefined' && replyData) {
-                msgObj.replyTo = replyData;
-            }
-            
+            if (typeof replyData !== 'undefined' && replyData) { msgObj.replyTo = replyData; }
             db.ref("chats/" + currentChatId).push(msgObj).then(() => {
                 textInput.value = "";
                 updateSummary(val);
@@ -2303,50 +1807,33 @@
     function closeChat() { document.getElementById("sidebar").classList.remove("hidden"); }
     function goToProfile() { window.location.href = isGroup ? `group-profile.html?id=${currentPartnerId}` : `user-profile.html?id=${currentPartnerId}`; }
     function goToTargetProfile(id, grp) { window.location.href = grp ? `group-profile.html?id=${id}` : `user-profile.html?id=${id}`; }
-
     function logout() { if(confirm("Keluar?")) { localStorage.clear(); window.location.href="index.html"; } }
 
     window.onload = initApp;
     document.getElementById("text").onkeydown = e => { if(e.key === "Enter") send(); };
     
-    // --- LOGIC PLAY SOUND (SAMA SEPERTI SEBELUMNYA) ---
-      function playNotificationSound(type = 'message') {
+    function playNotificationSound(type = 'message') {
         const soundId = (type === 'ringtone') ? "ringtoneSound" : "notificationSound";
         const sound = document.getElementById(soundId);
-        
         if (sound) {
             sound.currentTime = 0;
-            if (type === 'ringtone') {
-                sound.loop = true; 
-            } else {
-                sound.loop = false;
-            }
-            
+            if (type === 'ringtone') { sound.loop = true; } else { sound.loop = false; }
             const playPromise = sound.play();
-            
             if (playPromise !== undefined) {
-                playPromise.then(() => {
-                    console.log(`🔊 [BERHASIL] Suara ${type} diputar.`);
-                }).catch(error => {
-                    console.warn("🚫 [ERROR] Audio gagal dimainkan:", error);
-                });
+                playPromise.then(() => {}).catch(error => { console.warn("Audio gagal dimainkan:", error); });
             }
         }
     }
 
-     
     function deleteChat(targetId) {
         if (confirm("Hapus percakapan ini dari daftar Anda?")) {
             db.ref(`user_chats/${currentUser}/${targetId}`).remove();
             db.ref(`user_settings/${currentUser}/pinned_chats/${targetId}`).remove();
-            
             showToast("Kontak dihapus dari daftar");
             closeContextMenu();
-            
             const list = document.getElementById("users");
             if(list) list.innerHTML = "";
             loadContacts();
-            
             if (currentChatId === targetId) {
                 document.getElementById("chat-header-area").style.display = "none";
                 document.getElementById("msgs").style.display = "none";
@@ -2363,9 +1850,7 @@
 
         element.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            if (typeof showChatMenu === "function") {
-                showChatMenu(e.clientX, e.clientY, targetId);
-            }
+            if (typeof showChatMenu === "function") { showChatMenu(e.clientX, e.clientY, targetId); }
         });
 
         element.addEventListener('touchstart', (e) => {
@@ -2377,20 +1862,15 @@
 
             internalHoldTimer = setTimeout(() => {
                 if (navigator.vibrate) navigator.vibrate(50);
-                if (typeof showChatMenu === "function") {
-                    showChatMenu(touchStartX, touchStartY, targetId);
-                }
+                if (typeof showChatMenu === "function") { showChatMenu(touchStartX, touchStartY, targetId); }
             }, 600); 
         }, { passive: true });
 
-        // PERBAIKAN DI SINI: Tambahkan kurung kurawal { setelah (e)
         element.addEventListener('touchmove', (e) => {
             if (!internalHoldTimer) return;
-            
             const touch = e.touches[0];
             const moveX = Math.abs(touch.clientX - touchStartX);
             const moveY = Math.abs(touch.clientY - touchStartY);
-
             if (moveX > 10 || moveY > 10) {
                 clearTimeout(internalHoldTimer);
                 internalHoldTimer = null;
@@ -2399,7 +1879,6 @@
 
         element.addEventListener('touchend', () => {
             clearTimeout(internalHoldTimer);
-            // PERBAIKAN DI SINI: internalHeldTimer -> internalHoldTimer
             internalHoldTimer = null; 
         });
 
@@ -2409,9 +1888,8 @@
         });
     }
 
-       function showChatMenu(x, y, targetId) {
+    function showChatMenu(x, y, targetId) {
         let menu = document.getElementById('chat-context-menu');
-        
         if (!menu) {
             menu = document.createElement('div');
             menu.id = 'chat-context-menu';
@@ -2427,10 +1905,6 @@
             document.body.appendChild(menu);
         }
 
-        // JANGAN AMBIL DATA PIN LAGI, KITA HAPUS KODE DIBAWAH INI
-        // db.ref(`user_settings/${currentUser}/pinned_chats/${targetId}`).once('value', (snapshot) => { ... }); 
-
-        // LANGSUNG ISI MENU HANYA "HAPUS CHAT"
         menu.innerHTML = `
             <div onclick="deleteChat('${targetId}')" style="padding: 10px 15px; cursor: pointer; color: #ff5e5e;">
                 <i class="fas fa-trash" style="margin-right:10px;"></i> Hapus Chat
@@ -2438,7 +1912,7 @@
         `;
 
         const menuWidth = 160;
-        const menuHeight = 50; // Tinggi berkurang karena hanya 1 menu
+        const menuHeight = 50; 
         let finalX = x;
         let finalY = y;
 
@@ -2458,20 +1932,13 @@
     function openMenu(x, y) {
         const menu = document.getElementById('contextMenu');
         const overlay = document.getElementById('menuOverlay');
-        
         if (!menu) return;
-
         menu.style.display = 'block';
         overlay.style.display = 'block';
-
         let posX = x;
         let posY = y;
-        
-        if (x + 180 > window.innerWidth) posX = x - 180;
-        else posX = x + 10; 
-
+        if (x + 180 > window.innerWidth) posX = x - 180; else posX = x + 10; 
         if (y + 100 > window.innerHeight) posY = y - 100;
-
         menu.style.left = posX + "px";
         menu.style.top = posY + "px";
     }
@@ -2481,9 +1948,7 @@
         if (menuOverlay) menuOverlay.style.display = 'none';
     }
 
-    if (contextMenu) {
-        contextMenu.onclick = (e) => e.stopPropagation();
-    }
+    if (contextMenu) { contextMenu.onclick = (e) => e.stopPropagation(); }
 
     function startTimer() {
         let sec = 0, min = 0;
@@ -2499,7 +1964,6 @@
 
     async function handleStart(e) {
         if (e.cancelable) e.preventDefault();
-
         startX = e.type.includes('mouse') ? e.clientX : e.touches[0].clientX;
         isCancelled = false;
 
@@ -2640,7 +2104,6 @@
         clearInterval(recordInterval);
         const timerDisplay = document.getElementById('record-timer');
         if(timerDisplay) timerDisplay.innerText = "00:00";
-        
         if(recordingUI) recordingUI.style.display = 'none';
         if(normalInput) normalInput.style.display = 'flex';
         if(sendButton) sendButton.style.display = 'block';
@@ -2657,96 +2120,18 @@
     window.addEventListener('mouseup', () => {
         if (mediaRecorder && mediaRecorder.state === "recording") handleStop();
     });
-
-      function openViewOnceMessage(key) {
-        if (!currentChatId) return;
-
-        // 1. Ambil data pesan dari DB
-        db.ref("chats/" + currentChatId + "/" + key).once("value", snap => {
-            const m = snap.val();
-            if (!m || !m.viewOnce) return;
-
-            const msgEl = document.getElementById("msg-wrap-" + key);
-            if (msgEl) {
-                const url = decryptData(m.text.replace("IMG:", ""));
-                
-                // 2. UPDATE VISUAL TAMPILAN (Tunjukkan gambar jernih)
-                const contentDiv = msgEl.querySelector('.msg');
-                if (contentDiv) {
-                    // Kita ganti gambar blur dengan gambar jernih yang bisa diklik (Lightbox)
-                    contentDiv.innerHTML = `
-                        <img src="${url}" onclick="openLightbox('${url}')" style="max-width:100%; border-radius:10px; cursor:pointer;">
-                        <div style="font-size:10px; text-align:center; opacity:0.6; margin-top:5px;">Gambar telah dilihat</div>
-                        ${m.edited ? `<small style="opacity:0.5; font-size:9px; margin-left:5px;">(diedit)</small>` : ""}
-                        ${m.forwarded ? `<div class="forward-tag" style="font-size:10px; opacity:0.6; margin-bottom:2px;"><i class="fa fa-share"></i> Diteruskan</div>` : ""}
-                    `;
-                    
-                    // Hapus style blur/overlay jika ada
-                    if (msgEl.querySelector('.view-once-blur')) {
-                        const blurWrap = msgEl.querySelector('.view-once-blur');
-                        blurWrap.classList.remove('view-once-blur'); 
-                        blurWrap.removeAttribute('onclick');
-                        blurWrap.removeAttribute('style');
-                    }
-                }
-
-                // 3. SET FLAG AGAR LISTENER TIDAK MENGHAPUS
-                viewOnceIgnoredKey = key;
-
-                // 4. HAPUS PESAN DARI DATABASE
-                db.ref("chats/" + currentChatId + "/" + key).update({
-                    deleted: true,
-                    text: encryptData("👁️ Gambar dilihat sekali"),
-                    replyTo: null,
-                    forwarded: null,
-                    viewOnce: false
-                });
-            }
-        });
-    }
-        
-         function toggleViewOnce() {
-        isViewOnceEnabled = !isViewOnceEnabled;
-        const icon = document.getElementById("viewOnceIcon");
-        const label = document.getElementById("viewOnceLabel");
-        
-        if (isViewOnceEnabled) {
-            icon.className = "fas fa-eye-slash"; // Mata tertutup
-            icon.style.color = "#ff5e5e"; // Merah
-            label.style.color = "#ff5e5e";
-        } else {
-            icon.className = "far fa-eye"; // Mata terbuka
-            icon.style.color = "#ccc";
-            label.style.color = "#ccc";
-        }
-    }
             
     function openLightbox(url) {
         const modal = document.getElementById('imageLightbox');
         const img = document.getElementById('lightboxImg');
         const err = document.getElementById('lightboxError');
-        
-        // Tampilkan Modal Lightbox
         modal.style.display = 'flex';
-        
-        // Reset Tampilan: Tampilkan Gambar, Sembunyikan Teks Error
         img.style.display = 'block';
         err.style.display = 'none';
-        
-        // Set URL Gambar
         img.src = url;
-
-        // LOGIKA: Jika gambar gagal dimuat (Error)
         img.onerror = function() {
-            // 1. Sembunyikan gambar yang gagal
             img.style.display = 'none';
-            
-            // 2. Tampilkan teks "Gagal memuat gambar"
             err.style.display = 'block';
-            
-            // 3. MATIKAN ONERROR (PENTING!)
-            // Ini mencegah browser mencoba memuat ulang jika teks error gagal, 
-            // sehingga loop spam error berhenti.
             img.onerror = null; 
         };
     }
@@ -2754,32 +2139,6 @@
         document.getElementById('imageLightbox').style.display = 'none';
         document.getElementById('lightboxImg').src = '';
     }
-
     </script>
     </body>
-
-    </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+</html>
