@@ -1084,23 +1084,20 @@
         NOTIFICATION LOGIC (SPLIT CATEGORIES)
         ========================================= */
     
-    function showBrowserNotification(title, body, icon, tag) {
+       function showBrowserNotification(title, body, icon, tag) {
         // --- GAMBAR HITAM 1x1 PIXEL (DATA URI) ---
-        // Hack agar background notifikasi jadi hitam (Dark Mode)
         const blackPixel = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
 
-        // --- URL BADGE (IKON KECIL GOCHAT) ---
-        // Badge ini membuat notifikasi terlihat "resmi" dari aplikasi Anda
+        // --- URL BADGE ---
         const badgeUrl = "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
         // --- OPTIONS UNTUK FALLBACK (NATIVE NOTIF) ---
         const options = {
             body: body,
-            icon: icon, // Ikon Avatar Pengirim
+            icon: icon,
             badge: badgeUrl, 
             
-            // --- PERBAIKAN 1: PAKAI IMAGE HITAM DI SINI JUGA ---
-            // Jangan null, pakai blackPixel agar jadi gelap
+            // PAKAI IMAGE HITAM (HACK DARK MODE IOS)
             image: blackPixel, 
 
             vibrate: [200, 100, 200],
@@ -1108,16 +1105,27 @@
             requireInteraction: true
         };
 
-        // --- 1. TRY SHOW VIA SERVICE WORKER (BEST) ---
+        // --- 1. CARI TAHU SUARA APA YANG DIMAINKAN (RINGTONE/MSG) ---
+        let soundType = 'message';
+        if (tag.includes('ringtone') || tag.includes('call')) {
+            soundType = 'ringtone';
+        }
+
+        // --- 2. MAINKAN SUARA MANUAL (WAJIB UNTUK IOS) ---
+        // Di iOS, parameter 'vibrate' sering diabaikan. Jadi kita paksa putar audio HTML kita.
+        playNotificationSound(soundType);
+        
+        console.log(`[NOTIF] Suara Type: ${soundType}. Siap tampilkan notif...`);
+
+        // --- 3. TRY SHOW VIA SERVICE WORKER (BEST PRACTICE) ---
         if (navigator.serviceWorker && navigator.serviceWorker.controller) {
             
-            // --- PERBAIKAN 2: KIRIM DATA BACKGROUND KE SERVICE WORKER ---
             const dataPayload = {
                 title: title, 
                 body: body,
                 icon: icon,
-                badge: badgeUrl, // <--- KIRIM BADGE
-                image: blackPixel, // <--- KIRIM IMAGE HITAM (INI YANG PENTING!)
+                badge: badgeUrl, 
+                image: blackPixel, // Mengirim background hitam ke SW
                 tag: tag,
                 url: window.location.href
             };
@@ -1126,8 +1134,9 @@
                 type: 'NOTIFICATION',
                 data: dataPayload
             });
+            console.log("[NOTIF] Terkirim ke Service Worker");
         } 
-        // --- 2. FALLBACK: NATIVE NOTIFICATION ---
+        // --- 4. FALLBACK: NATIVE NOTIFICATION (JADIKAN UNTUK IOS) ---
         else if (Notification.permission === "granted") {
             const finalTitle = title; 
 
@@ -2415,6 +2424,7 @@
     </body>
 
     </html>
+
 
 
 
